@@ -1,1 +1,0 @@
-# StarUML.Teamwork

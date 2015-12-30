@@ -40,7 +40,7 @@ define(function (require, exports, module) {
 
     //Functions
     function openTeamworkProject() {
-        var remoteProjectURL = GitConfiguration.getRemoteURL();
+        var remoteProjectURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
         //var localWorkingDir = loadWorkingDirectory("Test1");
         var localWorkingDir = loadLocalWorkingDirectory("Blub");
 
@@ -63,17 +63,19 @@ define(function (require, exports, module) {
             var GitApi = require("../htmlGit");
             var options = {
                 dir: workingDir,
-                url: '',
+                url: remoteProjectURL,
                 branch: 'projects/Test1',
                 depth: 1,
-                username: '',
-                password: '',
+                username: GitConfiguration.getUsername(),
+                password: GitConfiguration.getPassword(),
                 progress: function(progress) {
                     console.log(progress.pct, progress.msg);
                 }
             };
             GitApi.clone(options, function () {
-                    console.log("Success");
+                    loadProjectFromFragments("Blub");
+                    GitBase.setTeamworkProjectName("Test1");
+                    Toast.info("Success");
                 },
                 function (err) {
                     console.log("Immer noch error: ", err);

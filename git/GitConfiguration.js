@@ -38,6 +38,12 @@ define(function (require, exports, module) {
         return remoteURL;
     }
 
+    function buildRemoteURLWithoutUsernameAndPassword() {
+        var remoteHost 		= getRemoteHost();
+        var remoteProtocol 	= getRemoteProtocol();
+        return remoteProtocol + remoteHost;
+    }
+
     function getUserName() {
         return PreferenceManager.get(USERNAME_PREFERENCE);
     }
@@ -91,4 +97,6 @@ define(function (require, exports, module) {
     exports.getLocalWorkingDirectory = getLocalWorkingDirectory;
     exports.getSelectedGitBackendModule = getSelectedGitBackendModule;
     exports.getUsername = getUsername;
+    exports.getPassword = getPassword;
+    exports.getRemoteURLWithoutUsernameAndPasswort = buildRemoteURLWithoutUsernameAndPassword;
 });
