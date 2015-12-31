@@ -8,6 +8,7 @@ define(function (require, exports, module) {
     var MenuManager        		= app.getModule("menu/MenuManager");
     var DefaultMenus            = app.getModule("menu/DefaultMenus");
     var ContextMenuManager      = app.getModule("menu/ContextMenuManager");
+    var ExtensionUtils          = app.getModule("utils/ExtensionUtils");
 
     //Imported files
     var TeamworkCommandHandler 	= require("./CommandHandler");
@@ -66,6 +67,8 @@ define(function (require, exports, module) {
     contextMenuExplorer.addMenuItem(CMD_UNLOCK_ELEMENT);
 
     AppInit.htmlReady(function () {
+        ExtensionUtils.loadStyleSheet(module, "styles/dialog.css");
+        ExtensionUtils.loadStyleSheet(module, "styles/bootstrap/css/bootstrap.css");
         LockingAttributesElement.addLockingAttributeToElementType();
         LockingAttributesElement.addLockingAttributesToUMLModelElementType();
         Trigger.setupTriggerOpenProject();

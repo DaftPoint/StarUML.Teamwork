@@ -1,0 +1,34 @@
+.new-project-dialog .btn-text{
+    background: url("Git-Icon-Black.png") no-repeat 0 50%;
+    padding: 10px 0px 10px 39px;
+    font-size: 20px;
+}
+
+.new-project-dialog .btn-text.blank-project-text{
+    background-image: url("folder-plus.png")
+}
+
+.new-project-dialog .btn{
+    padding-left: 10px;
+    padding-right: 10px;
+    text-align: left;
+}
+
+.new-project-dialog .modal-header, .new-project-dialog .modal-body {
+    width: 264px;
+}
+
+.git-progress .modal-header, .git-progress .modal-body {
+    min-width: 300px
+}
+.git-progress .modal-header, .git-progress .modal-body #import-status {
+    margin-bottom: .7em
+}
+
+.new-project-dialog{
+    margin-left: -132px;
+}
+
+#import-status {
+    color: black !important;
+}

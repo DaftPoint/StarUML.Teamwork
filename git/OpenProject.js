@@ -92,10 +92,9 @@ define(function (require, exports, module) {
                             loadProjectFromFragments("Project");
                             GitBase.setTeamworkProjectName(projectName);
                             Dialogs.cancelModalDialogIfOpen('modal');
-                            Toast.info("Success");
+                            Toast.info("Opening Project...");
                         },
                         function (err) {
-                            console.log("Immer noch error: ", err);
                             Toast.error(err);
                         });
                     } else {
