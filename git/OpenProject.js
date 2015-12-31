@@ -41,8 +41,6 @@ define(function (require, exports, module) {
     //Functions
     function openTeamworkProject() {
         var remoteProjectURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
-        //var localWorkingDir = loadWorkingDirectory("Test1");
-        var localWorkingDir = loadLocalWorkingDirectory("Blub");
 
         var PlatformFileSystem  = require("../file/PlatformFileSystem").PlatformFileSystem;
         var DefaultDialog = require("../dialogs/DefaultDialogs");
@@ -59,6 +57,7 @@ define(function (require, exports, module) {
                 }, fileErrorHandler);
             });
         }
+        var localWorkingDir = loadLocalWorkingDirectory("Project");
         getProjectsRootDir(function(workingDir) {
             var GitApi = require("../htmlGit");
             var options = {
@@ -72,17 +71,42 @@ define(function (require, exports, module) {
                     console.log(progress.pct, progress.msg);
                 }
             };
-            GitApi.clone(options, function () {
-                    loadProjectFromFragments("Blub");
-                    GitBase.setTeamworkProjectName("Test1");
-                    Toast.info("Success");
-                },
-                function (err) {
-                    console.log("Immer noch error: ", err);
+            GitApi.getProjectRefs(options, function(projectRefs) {
+                var options = [];
+                projectRefs.forEach(function(item, index, array) {
+                    options.push({text: item.name, value: item.name});
                 });
+                var dlg = Dialogs.showSelectDropdownDialog(CONFIRM_MESSAGE_LOADING_PROJECT, options);
+                dlg.done(function (buttonId, projectName) {
+                    if (buttonId === Dialogs.DIALOG_BTN_OK) {
+                        var options = {
+                            dir: workingDir,
+                            url: remoteProjectURL,
+                            branch: 'projects/' + projectName,
+                            depth: 1,
+                            username: GitConfiguration.getUsername(),
+                            password: GitConfiguration.getPassword(),
+                            progress: function(progress) {
+                                console.log(progress.pct, progress.msg);
+                            }
+                        };
+                        GitApi.clone(options, function () {
+                            loadProjectFromFragments("Project");
+                            GitBase.setTeamworkProjectName(projectName);
+                            Toast.info("Success");
+                        },
+                        function (err) {
+                            console.log("Immer noch error: ", err);
+                            Toast.error(err);
+                        });
+                    } else {
+                        Toast.error(PROJECT_LOADING_CANCELLATION_MESSAGE);
+                    }
+                });
+            });
         });
     }
-    /*function openTeamworkProject() {
+    function openTeamworkProjectWithNodeJS() {
         var projectNamePromise = new $.Deferred();
         var gitModule = loadGitModule();
         var remoteProjectURL = GitConfiguration.getRemoteURL();
@@ -110,7 +134,7 @@ define(function (require, exports, module) {
         }).fail(function(message) {
             Toast.error(message);
         });
-    }*/
+    }
 
     function cleanCurrentWork() {
         ProjectManager.closeProject();

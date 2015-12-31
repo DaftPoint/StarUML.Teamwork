@@ -6532,6 +6532,7 @@
             this.store = store;
             this.name = name;
             this.refs = {};
+            this.projects = {};//TODO: Refactoring!!!
             this.url = repoUrl.replace(/\?.*/, "").replace(/\/$/, "");
             username = username || "";
             password = password || "";
@@ -6682,6 +6683,38 @@
                         callback(discInfo.refs)
                     }
                 });
+            }
+            //TODO: Refactoring!!!
+            this.fetchProjectRefs = function(callback) {
+                var remote = this,
+                    uri = this.makeUri('/info/refs', {service: "git-upload-pack"});
+                doGet(uri, function(data) {
+                    var discInfo = parseDiscovery(data)
+                    var i, ref
+                    for (i = 0; i < discInfo.refs.length; i++) {
+                        ref = discInfo.refs[i]
+                        remote.addProjectRef(ref.name, ref.sha)
+                    }
+                    if (callback != "undefined") {
+                        callback(discInfo.refs)
+                    }
+                });
+            }
+
+            // Add a ref to this remote. fullName is of the form:
+            //   refs/heads/master or refs/tags/123
+            this.addProjectRef = function(fullName, sha) {
+                var type, name
+                if (fullName.slice(0, 20) == "refs/heads/projects/") {
+                    type = fullName.split("/")[1]
+                    name = fullName.split("/")[3]
+                    this.projects[name] = {
+                        name: name,
+                        sha: sha,
+                        remote: this,
+                        type: type
+                    }
+                }
             }
 
             this.fetchReceiveRefs = function(callback) {
@@ -6894,6 +6927,10 @@
 
             this.getRefs = function() {
                 return _(this.refs).values()
+            }
+
+            this.getProjectRefs = function() {//TODO: Refactoring!!!
+                return _(this.projects).values()
             }
 
             this.getRef = function(name) {
@@ -8894,6 +8931,23 @@
                         success, error);
 
                 }, error);
+            },
+            getProjectRefs : function(options, success, error) {
+                success = success || function(){};
+                error = error || function(){};
+                var objectStore = new FileObjectStore(options.dir);
+                objectStore.init(function() {
+                    var remoteProjectURL = options.url;
+                    var username = options.username;
+                    var password = options.password;
+
+                    var remote = new SmartHttpRemote(objectStore, "refs/heads", remoteProjectURL, username, password);
+                    remote.fetchProjectRefs(function() {
+                        var remoteRefs = remote.getProjectRefs();
+                        success(remoteRefs);
+                        return remoteRefs;
+                    })
+                });
             },
             /**
              * Does a pull from the url the local repo was cloned from. Will only succeed for fast-forward pulls.
