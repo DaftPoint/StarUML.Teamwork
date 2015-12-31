@@ -15,14 +15,14 @@ define(function (require, exports, module) {
     var DiagramManager = app.getModule("diagrams/DiagramManager");
 
     //Imports
-    var GitBase = require("git/Base");
-    var GitConfiguration = require("git/GitConfiguration");
+    var GitBase            = require("git/Base");
+    var GitConfiguration   = require("git/GitConfiguration");
     var ProjectJSONBuilder = require("./open/ProjectJSONBuilder");
     var LockElement        = require("git/LockElement");
+    var GitApi             = require("../htmlGit");
+    var ProgressDialog     = require("../dialogs/ProgressDialog");
 
     //Constants
-    var CONFIRM_MESSAGE_LOADING_REPO            = "All Projects that exist at the given local path and all it changes will be removed to load the new Project. Are you sure that you want this?";
-    var LOADING_PROJECT_CANCELLED               = "Loading project cancelled by user";
     var LOADING_PROJECT_SUCCESSFUL              = "Loading project was successful!";
     var ERROR_OCCURRED_DURING_LOADING           = "An error occurred during the Project loading!";
     var ERROR_WHILE_LOADING_PROJECT             = "[Error while loading Teamwork-Project:] ";
@@ -42,24 +42,25 @@ define(function (require, exports, module) {
     function openTeamworkProject() {
         var remoteProjectURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
 
-        var PlatformFileSystem  = require("../file/PlatformFileSystem").PlatformFileSystem;
+        var PlatformFileSystem = require("../file/PlatformFileSystem").PlatformFileSystem;
         var DefaultDialog = require("../dialogs/DefaultDialogs");
-        function fileErrorHandler(e){
+
+        function fileErrorHandler(e) {
             Dialogs.showModalDialog(DefaultDialog.DIALOG_ID_ERROR, 'Unexpected File Error', 'File error code is ' + e.code);
         }
 
-        function getProjectsRootDir(callback){
-            PlatformFileSystem.requestNativeFileSystem(localWorkingDir, function(fs){
+        function getProjectsRootDir(callback) {
+            PlatformFileSystem.requestNativeFileSystem(localWorkingDir, function (fs) {
                 callback(fs.root);
-            }, function(e){
-                PlatformFileSystem.requestNativeFileSystem(null, function(fs){
-                    fs.root.getDirectory(localWorkingDir, {create:true}, callback, fileErrorHandler);
+            }, function (e) {
+                PlatformFileSystem.requestNativeFileSystem(null, function (fs) {
+                    fs.root.getDirectory(localWorkingDir, {create: true}, callback, fileErrorHandler);
                 }, fileErrorHandler);
             });
         }
+
         var localWorkingDir = loadLocalWorkingDirectory("Project");
-        getProjectsRootDir(function(workingDir) {
-            var GitApi = require("../htmlGit");
+        getProjectsRootDir(function (workingDir) {
             var options = {
                 dir: workingDir,
                 url: remoteProjectURL,
@@ -67,13 +68,13 @@ define(function (require, exports, module) {
                 depth: 1,
                 username: GitConfiguration.getUsername(),
                 password: GitConfiguration.getPassword(),
-                progress: function(progress) {
+                progress: function (progress) {
                     console.log(progress.pct, progress.msg);
                 }
             };
-            GitApi.getProjectRefs(options, function(projectRefs) {
+            GitApi.getProjectRefs(options, function (projectRefs) {
                 var options = [];
-                projectRefs.forEach(function(item, index, array) {
+                projectRefs.forEach(function (item, index, array) {
                     options.push({text: item.name, value: item.name});
                 });
                 var dlg = Dialogs.showSelectDropdownDialog(CONFIRM_MESSAGE_LOADING_PROJECT, options);
@@ -86,42 +87,23 @@ define(function (require, exports, module) {
                             depth: 1,
                             username: GitConfiguration.getUsername(),
                             password: GitConfiguration.getPassword(),
-                            progress: showProgress("Loading Teamwork-Project...", "Connecting to server...")
+                            progress: ProgressDialog.showProgress("Loading Teamwork-Project...", "Connecting to server...")
                         };
                         GitApi.clone(options, function () {
-                            loadProjectFromFragments("Project");
-                            GitBase.setTeamworkProjectName(projectName);
-                            Dialogs.cancelModalDialogIfOpen('modal');
-                            Toast.info("Opening Project...");
-                        },
-                        function (err) {
-                            Toast.error(err);
-                        });
+                                loadProjectFromFragments("Project");
+                                GitBase.setTeamworkProjectName(projectName);
+                                Dialogs.cancelModalDialogIfOpen('modal');
+                                Toast.info("Opening Project...");
+                            },
+                            function (err) {
+                                Toast.error(err);
+                            });
                     } else {
                         Toast.error(PROJECT_LOADING_CANCELLATION_MESSAGE);
                     }
                 });
             });
         });
-    }
-
-    function showProgress(title, initialMsg){
-        var ProgressTemplate    = require("./ProgressTemplate");
-        Dialogs.cancelModalDialogIfOpen('modal');
-        var context = {title: title, initialMsg: initialMsg};
-        Dialogs.showModalDialogUsingTemplate(Mustache.render(ProgressTemplate, context), false);
-        return createProgressMonitor();
-    }
-
-    function createProgressMonitor(){
-        var bar = $('.git-progress .bar')[0];
-        var $msg = $('#import-status')
-
-        var progress = function(data){
-            bar.style.width = data.pct + '%';
-            $msg.text(data.msg);
-        }
-        return progress;
     }
 
     function cleanCurrentWork() {
