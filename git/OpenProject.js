@@ -86,7 +86,7 @@ define(function (require, exports, module) {
                             depth: 1,
                             username: GitConfiguration.getUsername(),
                             password: GitConfiguration.getPassword(),
-                            progress: showProgress("Cloning Git Repo...", "Connecting to server...")
+                            progress: showProgress("Loading Teamwork-Project...", "Connecting to server...")
                         };
                         GitApi.clone(options, function () {
                             loadProjectFromFragments("Project");
