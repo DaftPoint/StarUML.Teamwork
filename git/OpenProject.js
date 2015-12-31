@@ -86,13 +86,12 @@ define(function (require, exports, module) {
                             depth: 1,
                             username: GitConfiguration.getUsername(),
                             password: GitConfiguration.getPassword(),
-                            progress: function(progress) {
-                                console.log(progress.pct, progress.msg);
-                            }
+                            progress: showProgress("Cloning Git Repo...", "Connecting to server...")
                         };
                         GitApi.clone(options, function () {
                             loadProjectFromFragments("Project");
                             GitBase.setTeamworkProjectName(projectName);
+                            Dialogs.cancelModalDialogIfOpen('modal');
                             Toast.info("Success");
                         },
                         function (err) {
@@ -106,34 +105,24 @@ define(function (require, exports, module) {
             });
         });
     }
-    function openTeamworkProjectWithNodeJS() {
-        var projectNamePromise = new $.Deferred();
-        var gitModule = loadGitModule();
-        var remoteProjectURL = GitConfiguration.getRemoteURL();
-        executeCommandLoadProjectNames(gitModule, remoteProjectURL, projectNamePromise);
-        projectNamePromise.done(function(projectNames) {
-            var options = [];
-            projectNames.forEach(function(item, index, array) {
-                options.push({text: item, value: item});
-            });
-            var dlg = Dialogs.showSelectDropdownDialog(CONFIRM_MESSAGE_LOADING_PROJECT, options);
-            dlg.done(function (buttonId, projectName) {
-                if (buttonId === Dialogs.DIALOG_BTN_OK) {
-                    var promise = loadFragmentsFromTeamworkServer(projectName);
-                    promise.done(function(message) {
-                        loadProjectFromFragments(projectName);
-                        GitBase.setTeamworkProjectName(projectName);
-                        Toast.info(message);
-                    }).fail(function(message) {
-                        Toast.error(message);
-                    });
-                } else {
-                    Toast.error(PROJECT_LOADING_CANCELLATION_MESSAGE);
-                }
-            });
-        }).fail(function(message) {
-            Toast.error(message);
-        });
+
+    function showProgress(title, initialMsg){
+        var ProgressTemplate    = require("./ProgressTemplate");
+        Dialogs.cancelModalDialogIfOpen('modal');
+        var context = {title: title, initialMsg: initialMsg};
+        Dialogs.showModalDialogUsingTemplate(Mustache.render(ProgressTemplate, context), false);
+        return createProgressMonitor();
+    }
+
+    function createProgressMonitor(){
+        var bar = $('.git-progress .bar')[0];
+        var $msg = $('#import-status')
+
+        var progress = function(data){
+            bar.style.width = data.pct + '%';
+            $msg.text(data.msg);
+        }
+        return progress;
     }
 
     function cleanCurrentWork() {
