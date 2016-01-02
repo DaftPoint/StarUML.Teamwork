@@ -86,7 +86,7 @@ define(['utils/file_utils', 'utils/misc_utils', 'utils/errors'], function (fileu
                 var absOffset = Math.abs(offset);
                 var offsetStr = '' + (offset < 0 ? '-' : '+') + (absOffset < 10 ? '0' : '') + absOffset + '00';
                 dateString = dateString + ' ' + offsetStr;
-                var commitContent = ['tree ',sha,'\n'];
+                var commitContent = ['tree ',sha,'\n'];ge
                 if (parent && parent.length){
                     commitContent.push('parent ', parent);
                     if (parent.charAt(parent.length - 1) != '\n'){

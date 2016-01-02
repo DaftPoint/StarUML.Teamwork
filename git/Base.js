@@ -8,8 +8,11 @@ define(function (require, exports, module) {
     //Modules
     var NodeDomain          = app.getModule("utils/NodeDomain");
     var ExtensionUtils      = app.getModule("utils/ExtensionUtils");
+    var Dialogs             = app.getModule('dialogs/Dialogs');
 
     var GitConfiguration    = require("git/GitConfiguration");
+    var PlatformFileSystem  = require("../file/PlatformFileSystem").PlatformFileSystem;
+    var DefaultDialog       = require("../dialogs/DefaultDialogs");
 
     //Constants
     var GIT_MODULE_BASE_PATH = "../node/";
@@ -69,9 +72,24 @@ define(function (require, exports, module) {
         _teamworkProjectName = projectName;
     }
 
+    function fileErrorHandler(e) {
+        Dialogs.showModalDialog(DefaultDialog.DIALOG_ID_ERROR, 'Unexpected File Error', 'File error code is ' + e.code);
+    }
+
+    function getProjectsRootDir(dirPath, callback) {
+        PlatformFileSystem.requestNativeFileSystem(dirPath, function (fs) {
+            callback(fs.root);
+        }, function (e) {
+            PlatformFileSystem.requestNativeFileSystem(null, function (fs) {
+                fs.root.getDirectory(dirPath, {create: true}, callback, fileErrorHandler);
+            }, fileErrorHandler);
+        });
+    }
+
     //Backend
     exports.init = init;
     exports.getGitNodeDomain = getGitNodeDomain;
     exports.getTeamworkProjectName = getTeamworkProjectName;
     exports.setTeamworkProjectName = setTeamworkProjectName;
+    exports.getProjectsRootDir = getProjectsRootDir;
 });

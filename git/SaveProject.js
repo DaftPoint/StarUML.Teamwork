@@ -14,8 +14,10 @@ define(function (require, exports, module) {
     var Constants           = app.getModule("utils/Constants");
     var Dialogs             = app.getModule('dialogs/Dialogs');
 
-    var GitBase             = require("git/Base");
-    var GitConfiguration    = require("git/GitConfiguration");
+    var GitBase             = require("./Base");
+    var GitConfiguration    = require("./GitConfiguration");
+    var GitApi              = require("../htmlGit");
+    var ProgressDialog      = require("../dialogs/ProgressDialog");
 
     //Constants
     var ERROR_SAVING_PROJECT  = "[Error commiting Projekt-Fragment to Teamwork-Server:] ";
@@ -33,7 +35,7 @@ define(function (require, exports, module) {
         var dlg = Dialogs.showInputDialog("Enter a name for the Project");
         dlg.done(function (buttonId, projectName) {
             if (buttonId === Dialogs.DIALOG_BTN_OK) {
-                splitProjectInSingleFiles(true, projectName);
+                //splitProjectInSingleFiles(true, projectName);
                 createNewProjectOnTeamworkServer(projectName);
                 Repository.setModified(false);
             } else {
@@ -52,10 +54,82 @@ define(function (require, exports, module) {
 
     function createNewProjectOnTeamworkServer(projectName) {
         var localPath = getProjectPath(projectName);
+        var remoteURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
+        GitBase.getProjectsRootDir(localPath, function (workingDir) {
+                var options = {
+                    dir: workingDir,
+                    branch: 'projects/' + projectName
+                };
+                GitApi.branch(options, function () {
+                    var options = {
+                        dir: workingDir,
+                        branch: 'projects/' + projectName
+                    };
+                    GitApi.checkout(options, function () {
+                            splitProjectInSingleFiles(false, projectName);
+                            var options = {
+                                dir: workingDir,
+                                name: GitConfiguration.getUsername(),
+                                email: GitConfiguration.getUsername() + '@noreply.com',
+                                commitMsg: 'Creating Project: ' + projectName
+                            };
+                            GitApi.commit(options, function() {
+                                var options = {
+                                    dir: workingDir,
+                                    url: remoteURL,
+                                    username: GitConfiguration.getUsername(),
+                                    password: GitConfiguration.getPassword(),
+                                    progress: ProgressDialog.showProgress("Creating Teamwork-Project...", "Connecting to server...")
+                                };
+                                GitApi.push(options, function() {
+                                    GitBase.setTeamworkProjectName(projectName);
+                                    Toast.info("TeamworkProject created...");
+                                    Dialogs.cancelModalDialogIfOpen('modal');
+                                    /*var options = {
+                                        url: remoteURL,
+                                        username: GitConfiguration.getUsername(),
+                                        password: GitConfiguration.getPassword()
+                                    };
+                                    GitApi.getRemoteBranches(options, function(branches) {
+                                        console.log(branches);
+                                    });*/
+
+                                    var options = {
+                                        dir: workingDir,
+                                        url: remoteURL,
+                                        depth: 1,
+                                        username: GitConfiguration.getUsername(),
+                                        password: GitConfiguration.getPassword(),
+                                        progress: function (progress) {
+                                            console.log(progress.pct, progress.msg);
+                                        }
+                                    };
+                                    GitApi.getProjectRefs(options, function (projectRefs) {
+
+                                    });
+                                    workingDir.removeRecursively();
+                                });
+                            }, function (err) {
+                                workingDir.removeRecursively();
+                                Dialogs.cancelModalDialogIfOpen('modal');
+                                Toast.error(err);
+                            });
+                        },
+                        function (err) {
+                            workingDir.removeRecursively();
+                            Dialogs.cancelModalDialogIfOpen('modal');
+                            Toast.error(err);
+                        });
+                    });
+                });
+    }
+
+    /*function createNewProjectOnTeamworkServer(projectName) {
+        var localPath = getProjectPath(projectName);
         var remoteURL = GitConfiguration.getRemoteURL();
         var gitModule = initGitModule();
         executeCreateProject(gitModule, localPath, remoteURL, projectName);
-    }
+    }*/
 
     function executeCreateProject(gitModule, localPath, remoteURL, projectName) {
         gitModule.exec(CMD_CREATE_NEW_PROJECT, localPath, remoteURL, projectName)

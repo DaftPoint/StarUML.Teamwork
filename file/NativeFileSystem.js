@@ -284,6 +284,7 @@ define(function (require, exports, module) {
                 break;
             case FileSystemError.OUT_OF_SPACE:
             case brackets.fs.ERR_OUT_OF_SPACE:
+            case NativeFileSystem.FileException.QUOTA_EXCEEDED_ERR:
                 error = NativeFileError.QUOTA_EXCEEDED_ERR;
                 break;
             case FileSystemError.ALREADY_EXISTS:
@@ -563,7 +564,7 @@ define(function (require, exports, module) {
             }
 
             var self = this;
-            var FileSystem = app.getModule("filesystem/FileSystem");
+            /*var FileSystem = app.getModule("filesystem/FileSystem");
              var FileUtils = app.getModule("file/FileUtils");
              var file = FileSystem.getFileForPath(fileEntry.fullPath);
              var writePromise = FileUtils.writeText(file, data, true);
@@ -583,9 +584,21 @@ define(function (require, exports, module) {
              if (self.onwriteend) {
              self.onwriteend();
              }
-             });
-            /*brackets.fs.writeFile(fileEntry.fullPath, data, _FSEncodings.UTF8, function (err) {
+             });*/
 
+
+            var ua2text =function(ua) {
+                var s = '';
+                for (var i = 0; i < ua.length; i++) {
+                    s += String.fromCharCode(ua[i]);
+                }
+                return s;
+            };
+
+            if(data instanceof Uint8Array) {
+                data = ua2text(data);
+            }
+            brackets.fs.writeFile(fileEntry.fullPath, data, _FSEncodings.UTF8, function (err) {
                 if ((err !== brackets.fs.NO_ERROR) && self.onerror) {
                     var fileError = new NativeFileError(NativeFileSystem._fsErrorToDOMErrorName(err));
 
@@ -616,7 +629,7 @@ define(function (require, exports, module) {
                     // TODO (issue #241): progressevent
                     self.onwriteend();
                 }
-            });*/
+            });
         };
 
         /**
@@ -677,6 +690,22 @@ define(function (require, exports, module) {
         successCallback(newFile);
 
         // TODO (issue #241): errorCallback
+    };
+
+    NativeFileSystem.FileEntry.prototype.readAsText = function (successCallback, errorCallback) {//TODO: Refactoring!!!
+        successCallback = successCallback || function() {};
+        errorCallback = errorCallback || function() {};
+        var FileUtils = app.getModule("file/FileUtils"); //TODO: Refactoring!!!
+        this.file(function(file) {
+            var fileReader = new NativeFileSystem.FileReader();
+            fileReader.onloadend = function() {
+                successCallback(fileReader.result);
+            }
+            fileReader.onerror = function() {
+                errorCallback(fileReader.error);
+            }
+            fileReader.readAsText(file);
+        });
     };
 
     /**
@@ -1409,7 +1438,7 @@ define(function (require, exports, module) {
         this.size = 0;
 
         // TODO (issue #241): implement, readonly
-        this.type = null;
+        this.type = "";
     };
 
     /**
@@ -1437,7 +1466,7 @@ define(function (require, exports, module) {
      */
     NativeFileSystem.File = function (entry) {
         NativeFileSystem.Blob.call(this, entry.fullPath);
-
+        this._fullPath = entry.fullPath;
         // TODO (issue #241): implement, readonly
         this.name = "";
 

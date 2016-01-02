@@ -6,13 +6,13 @@ define(function (require, exports, module) {
     "use strict";
 
     //Modules
-    var Toast = app.getModule("ui/Toast");
-    var Dialogs = app.getModule('dialogs/Dialogs');
-    var PreferenceManager = app.getModule("core/PreferenceManager");
-    var ProjectManager = app.getModule("engine/ProjectManager");
-    var FileSystem = app.getModule("filesystem/FileSystem");
-    var Repository = app.getModule("core/Repository");
-    var DiagramManager = app.getModule("diagrams/DiagramManager");
+    var Toast               = app.getModule("ui/Toast");
+    var Dialogs             = app.getModule('dialogs/Dialogs');
+    var PreferenceManager   = app.getModule("core/PreferenceManager");
+    var ProjectManager      = app.getModule("engine/ProjectManager");
+    var FileSystem          = app.getModule("filesystem/FileSystem");
+    var Repository          = app.getModule("core/Repository");
+    var DiagramManager      = app.getModule("diagrams/DiagramManager");
 
     //Imports
     var GitBase            = require("git/Base");
@@ -43,14 +43,14 @@ define(function (require, exports, module) {
         var remoteProjectURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
 
         var PlatformFileSystem = require("../file/PlatformFileSystem").PlatformFileSystem;
-        var DefaultDialog = require("../dialogs/DefaultDialogs");
+        var DefaultDialog      = require("../dialogs/DefaultDialogs");
 
         function fileErrorHandler(e) {
             Dialogs.showModalDialog(DefaultDialog.DIALOG_ID_ERROR, 'Unexpected File Error', 'File error code is ' + e.code);
         }
 
-        function getProjectsRootDir(callback) {
-            PlatformFileSystem.requestNativeFileSystem(localWorkingDir, function (fs) {
+        function getProjectsRootDir(dirPath, callback) {
+            PlatformFileSystem.requestNativeFileSystem(dirPath, function (fs) {
                 callback(fs.root);
             }, function (e) {
                 PlatformFileSystem.requestNativeFileSystem(null, function (fs) {
@@ -60,11 +60,10 @@ define(function (require, exports, module) {
         }
 
         var localWorkingDir = loadLocalWorkingDirectory("Project");
-        getProjectsRootDir(function (workingDir) {
+        getProjectsRootDir(localWorkingDir, function (workingDir) {
             var options = {
                 dir: workingDir,
                 url: remoteProjectURL,
-                branch: 'projects/Test1',
                 depth: 1,
                 username: GitConfiguration.getUsername(),
                 password: GitConfiguration.getPassword(),
@@ -96,6 +95,8 @@ define(function (require, exports, module) {
                                 Toast.info("Opening Project...");
                             },
                             function (err) {
+                                workingDir.moveToTrash();
+                                Dialogs.cancelModalDialogIfOpen('modal');
                                 Toast.error(err);
                             });
                     } else {
