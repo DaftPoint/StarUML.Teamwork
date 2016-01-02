@@ -56,72 +56,82 @@ define(function (require, exports, module) {
         var localPath = getProjectPath(projectName);
         var remoteURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
         GitBase.getProjectsRootDir(localPath, function (workingDir) {
-                var options = {
-                    dir: workingDir,
-                    branch: 'projects/' + projectName
-                };
-                GitApi.branch(options, function () {
-                    var options = {
-                        dir: workingDir,
-                        branch: 'projects/' + projectName
-                    };
-                    GitApi.checkout(options, function () {
-                            splitProjectInSingleFiles(false, projectName);
-                            var options = {
-                                dir: workingDir,
-                                name: GitConfiguration.getUsername(),
-                                email: GitConfiguration.getUsername() + '@noreply.com',
-                                commitMsg: 'Creating Project: ' + projectName
-                            };
-                            GitApi.commit(options, function() {
+            //TODO: REFACTORING!!!
+                workingDir.getDirectory('.git', {create:true}, function(gitDir){
+                        gitDir.getDirectory('objects', {create: true}, function(objectsDir){
+                            var file = FileSystem.getFileForPath(localPath + "/.git/HEAD");
+                            file.write('ref: refs/heads/projects/' + projectName + '\n', function() {
                                 var options = {
                                     dir: workingDir,
-                                    url: remoteURL,
-                                    username: GitConfiguration.getUsername(),
-                                    password: GitConfiguration.getPassword(),
-                                    progress: ProgressDialog.showProgress("Creating Teamwork-Project...", "Connecting to server...")
+                                    branch: 'projects/' + projectName
                                 };
-                                GitApi.push(options, function() {
-                                    GitBase.setTeamworkProjectName(projectName);
-                                    Toast.info("TeamworkProject created...");
-                                    Dialogs.cancelModalDialogIfOpen('modal');
-                                    /*var options = {
-                                        url: remoteURL,
-                                        username: GitConfiguration.getUsername(),
-                                        password: GitConfiguration.getPassword()
-                                    };
-                                    GitApi.getRemoteBranches(options, function(branches) {
-                                        console.log(branches);
-                                    });*/
-
+                                GitApi.branch(options, function () {
                                     var options = {
                                         dir: workingDir,
-                                        url: remoteURL,
-                                        depth: 1,
-                                        username: GitConfiguration.getUsername(),
-                                        password: GitConfiguration.getPassword(),
-                                        progress: function (progress) {
-                                            console.log(progress.pct, progress.msg);
-                                        }
+                                        branch: 'projects/' + projectName
                                     };
-                                    GitApi.getProjectRefs(options, function (projectRefs) {
+                                    GitApi.checkout(options, function () {
+                                            splitProjectInSingleFiles(false, projectName);
+                                            var options = {
+                                                dir: workingDir,
+                                                name: GitConfiguration.getUsername(),
+                                                email: GitConfiguration.getUsername() + '@noreply.com',
+                                                commitMsg: 'Creating Project: ' + projectName
+                                            };
+                                            GitApi.commit(options, function() {
+                                                var options = {
+                                                    dir: workingDir,
+                                                    url: remoteURL,
+                                                    username: GitConfiguration.getUsername(),
+                                                    password: GitConfiguration.getPassword(),
+                                                    progress: ProgressDialog.showProgress("Creating Teamwork-Project...", "Connecting to server...")
+                                                };
+                                                GitApi.push(options, function() {
+                                                    GitBase.setTeamworkProjectName(projectName);
+                                                    Toast.info("TeamworkProject created...");
+                                                    Dialogs.cancelModalDialogIfOpen('modal');
+                                                    /*var options = {
+                                                     url: remoteURL,
+                                                     username: GitConfiguration.getUsername(),
+                                                     password: GitConfiguration.getPassword()
+                                                     };
+                                                     GitApi.getRemoteBranches(options, function(branches) {
+                                                     console.log(branches);
+                                                     });*/
 
-                                    });
-                                    workingDir.removeRecursively();
+                                                    var options = {
+                                                        dir: workingDir,
+                                                        url: remoteURL,
+                                                        depth: 1,
+                                                        username: GitConfiguration.getUsername(),
+                                                        password: GitConfiguration.getPassword(),
+                                                        progress: function (progress) {
+                                                            console.log(progress.pct, progress.msg);
+                                                        }
+                                                    };
+                                                    GitApi.getProjectRefs(options, function (projectRefs) {
+
+                                                    });
+                                                    workingDir.removeRecursively();
+                                                });
+                                            }, function (err) {
+                                                workingDir.removeRecursively();
+                                                Dialogs.cancelModalDialogIfOpen('modal');
+                                                Toast.error(err);
+                                            });
+                                        },
+                                        function (err) {
+                                            workingDir.removeRecursively();
+                                            Dialogs.cancelModalDialogIfOpen('modal');
+                                            Toast.error(err);
+                                        });
                                 });
-                            }, function (err) {
-                                workingDir.removeRecursively();
-                                Dialogs.cancelModalDialogIfOpen('modal');
-                                Toast.error(err);
                             });
-                        },
-                        function (err) {
-                            workingDir.removeRecursively();
-                            Dialogs.cancelModalDialogIfOpen('modal');
-                            Toast.error(err);
-                        });
-                    });
+                    }, function(e) { console.log(e); });
+                },
+                function(e){
                 });
+        });
     }
 
     /*function createNewProjectOnTeamworkServer(projectName) {

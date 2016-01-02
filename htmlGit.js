@@ -7666,7 +7666,7 @@
         }
 
         var checkTreeChanged = function (store, parent, sha, success, error) {
-            if (!parent || !parent.length || parent === '0000000000000000000000000000000000000000') {
+            if (!parent || !parent.length || parent === '0000000000000000000000000000000000000000') {//TODO: REFACTORING!!!
                 success();
             }
             else {
@@ -7701,7 +7701,7 @@
                     var offsetStr = '' + (offset < 0 ? '-' : '+') + (absOffset < 10 ? '0' : '') + absOffset + '00';
                     dateString = dateString + ' ' + offsetStr;
                     var commitContent = ['tree ', sha, '\n'];
-                    if (parent && parent.length) {
+                    if (parent && parent.length && parent != '0000000000000000000000000000000000000000'){//TODO: Refactoring !!!
                         commitContent.push('parent ', parent);
                         if (parent.charAt(parent.length - 1) != '\n') {
                             commitContent.push('\n');
@@ -8295,8 +8295,8 @@
             }
 
             store._getHeadForRef('refs/heads/' + branchName, branchAlreadyExists, function (e) {
-                if (e.code == FileError.NOT_FOUND_ERR || e.name === 'NotFoundError') {
-                    fileutils.mkfile(options.dir, '.git/refs/heads/master', '0000000000000000000000000000000000000000', function () {
+                if (e.code == FileError.NOT_FOUND_ERR || e.name === 'NotFoundError') {//TODO: REFACTORING!!!!
+                    fileutils.mkfile(options.dir, '.git/refs/heads/' + branchName, '0000000000000000000000000000000000000000', function () {
                         store.getHeadRef(function (refName) {
                             store._getHeadForRef(refName, function (sha) {
                                 store.createNewRef('refs/heads/' + branchName, sha, success);
