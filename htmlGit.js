@@ -7535,9 +7535,7 @@
                                         };
                                         packIdxDataStr = ua2text(packIdxDataStr);
                                         packIdxDataStr = '\ufeff' + packIdxDataStr;
-                                        mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr, undefined, function(err) {
-                                            mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr);//TODO: TRY AGAIN WORKAROUND
-                                        });
+                                        mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr);
                                         var packIdx = new PackIndex(packIdxData);
                                         store.loadWith(objectsDir, [{pack: new Pack(packData, self), idx: packIdx}]);
                                         progress({pct: 95, msg: "Building file tree from pack. Be patient..."});

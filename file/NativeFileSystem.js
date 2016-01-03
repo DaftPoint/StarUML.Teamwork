@@ -911,9 +911,18 @@ define(function (require, exports, module) {
                     // TODO: Pass permissions. The current implementation of fs.makedir() always
                     // creates the directory with the full permissions available to the current user.
 
-                    var mode = parseInt("0777", 8);
+                    /*var mode = parseInt("0777", 8);
                     brackets.fs.makedir(directoryFullPath, mode, function (err) {
                         if (err) {
+                            createDirectoryError(err);
+                        } else {
+                            createDirectoryEntry();
+                        }
+                    });*/
+                    var directory = FileSystem.getDirectoryForPath(directoryFullPath);
+                    var acceptedError = "AlreadyExists";
+                    directory.create(function(err, stat) {
+                        if(err && err != acceptedError) {
                             createDirectoryError(err);
                         } else {
                             createDirectoryEntry();

@@ -104,16 +104,6 @@ define(function(require, exports, module) {
         return definedWorkingPath + "/" + projectName;
     }
 
-    function executeCommand(gitModule, localWorkingDir, remoteProjectURL, projectName, promise) {
-        gitModule.exec(CMD_COMMIT_PROJECT, localWorkingDir, remoteProjectURL, projectName)
-            .done(function (success) {
-                promise.resolve("Changes committed");
-            }).fail(function (err) {
-            console.error("Error while committing", err);
-            promise.reject("Error while committing");
-        });
-    }
-
     //Backend
     exports.commitProjectChanges = commitProjectChanges;
 });
