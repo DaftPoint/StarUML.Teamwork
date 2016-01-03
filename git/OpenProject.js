@@ -23,16 +23,9 @@ define(function (require, exports, module) {
     var ProgressDialog     = require("../dialogs/ProgressDialog");
 
     //Constants
-    var LOADING_PROJECT_SUCCESSFUL              = "Loading project was successful!";
-    var ERROR_OCCURRED_DURING_LOADING           = "An error occurred during the Project loading!";
-    var ERROR_WHILE_LOADING_PROJECT             = "[Error while loading Teamwork-Project:] ";
-    var BEGIN_LOADING_TEAMWORK_PROJECT          = "Loading Project - please wait";
     var NO_PROJECT_DATA_FOUND_MESSAGE           = "No Project-Data found!";
     var CONFIRM_MESSAGE_LOADING_PROJECT         = "Are you sure? Current Project will be closed! Select Project to load...";
     var PROJECT_LOADING_CANCELLATION_MESSAGE    = "Project-Loading cancelled";
-
-    var CMD_OPEN_TEAMWORK_PROJECT = "openRepoAndLoadRemoteContent";
-    var CMD_LOAD_PROJECT_NAMES = "loadProjectNames";
 
     var PREFERENCE_LOCAL_PATH = "teamwork.server.local";
 
@@ -150,41 +143,6 @@ define(function (require, exports, module) {
         });
     }
 
-    function loadFragmentsFromTeamworkServer(projectName) {
-        var promise = new $.Deferred();
-        Toast.info(BEGIN_LOADING_TEAMWORK_PROJECT + ": " + projectName);
-        var gitModule = loadGitModule();
-        var localWorkingDir = loadLocalWorkingDirectory(projectName);
-        var remoteProjectURL = GitConfiguration.getRemoteURL();
-        executeCommandOpenProject(gitModule, localWorkingDir, remoteProjectURL, projectName, promise);
-        return promise.promise();
-    }
-
-    function executeCommandOpenProject(gitModule, localWorkingDir, remoteProjectURL, projectName, promise) {
-        gitModule.exec(CMD_OPEN_TEAMWORK_PROJECT, localWorkingDir, remoteProjectURL, projectName)
-            .done(function (success) {
-                promise.resolve(LOADING_PROJECT_SUCCESSFUL);
-            }).fail(function (err) {
-                console.error(ERROR_WHILE_LOADING_PROJECT, err);
-                promise.reject(ERROR_OCCURRED_DURING_LOADING);
-        });
-    }
-
-    function executeCommandLoadProjectNames(gitModule, remoteProjectURL, promise) {
-        gitModule.exec(CMD_LOAD_PROJECT_NAMES, remoteProjectURL)
-            .done(function (projectNames) {
-                promise.resolve(projectNames);
-            }).fail(function (err) {
-            console.error(ERROR_WHILE_LOADING_PROJECT, err);
-            promise.reject(ERROR_OCCURRED_DURING_LOADING);
-        });
-    }
-
-    function loadGitModule() {
-        GitBase.init();
-        return GitBase.getGitNodeDomain();
-    }
-
     function loadLocalWorkingDirectory(projectName) {
         var definedWorkingPath = PreferenceManager.get(PREFERENCE_LOCAL_PATH);
         return definedWorkingPath + "/" + projectName;
@@ -192,5 +150,4 @@ define(function (require, exports, module) {
 
     //Backend
     exports.openTeamworkProject = openTeamworkProject;
-    exports.loadFragmentsFromTeamworkServer = loadFragmentsFromTeamworkServer;
 });

@@ -5656,6 +5656,7 @@
                     },
                     readBlob: function (blobOrFile, dataType, callback) {//TODO: Refactoring!!!
                         var text2ua = function (s) {
+                            s = s.replace('\ufeff', '');
                             var ua = new Uint8Array(s.length);
                             for (var i = 0; i < s.length; i++) {
                                 ua[i] = s.charCodeAt(i);
@@ -5669,7 +5670,7 @@
                             }
                             reader["readAs" + dataType](blobOrFile);
                         } else if (typeof blobOrFile == 'string') {
-                            callback(text2ua(blobOrFile));
+                            callback(text2ua(blobOrFile).buffer);
                         } else {
                             throw new Error("Unknown type: ", typeof blobOrFile);
                         }
@@ -7523,7 +7524,17 @@
                                     var packName = 'pack-' + packNameSha;
                                     mkdirs(gitDir, 'objects', function (objectsDir) {
                                         mkfile(objectsDir, 'pack/' + packName + '.pack', packData.buffer);
-                                        mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxData);
+                                        packIdxDataStr = new Uint8Array(packIdxData);
+                                        var ua2text =function(ua) {
+                                            var s = '';
+                                            for (var i = 0; i < ua.length; i++) {
+                                                s += String.fromCharCode(ua[i]);
+                                            }
+                                            return s;
+                                        };
+                                        packIdxDataStr = ua2text(packIdxDataStr);
+                                        packIdxDataStr = '\ufeff' + packIdxDataStr;
+                                        mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr);
 
                                         var packIdx = new PackIndex(packIdxData);
                                         store.loadWith(objectsDir, [{pack: new Pack(packData, self), idx: packIdx}]);
@@ -8585,16 +8596,15 @@
                     objectsDir.getDirectory('pack', {create: true}, function (packDir) {
                         var packEntries = [];
                         var reader = packDir.createReader();
-                        var readEntries = function () {
+                        var readEntries = function (secondRun) {
                             reader.readEntries(function (entries) {
-                                if (entries.length) {
+                                if (entries.length && !secondRun) {
                                     for (var i = 0; i < entries.length; i++) {
                                         if (entries[i].name.endsWith('.pack'))
                                             packEntries.push(entries[i]);
                                     }
-                                    readEntries();
-                                }
-                                else {
+                                    readEntries(true);
+                                } else {
                                     if (packEntries.length) {
                                         var counter = {x: 0};
                                         packEntries.forEach(function (entry, i) {
@@ -8619,7 +8629,7 @@
                                 }
                             }, fe);
                         }
-                        readEntries();
+                        readEntries(false);
                     }, fe);
                 }, fe);
             },

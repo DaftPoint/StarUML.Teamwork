@@ -20,12 +20,8 @@ define(function (require, exports, module) {
     var ProgressDialog      = require("../dialogs/ProgressDialog");
 
     //Constants
-    var ERROR_SAVING_PROJECT  = "[Error commiting Projekt-Fragment to Teamwork-Server:] ";
-
     var NOT_CREATED           = "NOT_CREATED";
     var OK                    = "OK";
-
-    var CMD_CREATE_NEW_PROJECT       = "createNewProject";
 
     //Variables
 
@@ -35,7 +31,6 @@ define(function (require, exports, module) {
         var dlg = Dialogs.showInputDialog("Enter a name for the Project");
         dlg.done(function (buttonId, projectName) {
             if (buttonId === Dialogs.DIALOG_BTN_OK) {
-                //splitProjectInSingleFiles(true, projectName);
                 createNewProjectOnTeamworkServer(projectName);
                 Repository.setModified(false);
             } else {
@@ -90,38 +85,19 @@ define(function (require, exports, module) {
                                                     GitBase.setTeamworkProjectName(projectName);
                                                     Toast.info("TeamworkProject created...");
                                                     Dialogs.cancelModalDialogIfOpen('modal');
-                                                    /*var options = {
-                                                     url: remoteURL,
-                                                     username: GitConfiguration.getUsername(),
-                                                     password: GitConfiguration.getPassword()
-                                                     };
-                                                     GitApi.getRemoteBranches(options, function(branches) {
-                                                     console.log(branches);
-                                                     });*/
-
-                                                    var options = {
-                                                        dir: workingDir,
-                                                        url: remoteURL,
-                                                        depth: 1,
-                                                        username: GitConfiguration.getUsername(),
-                                                        password: GitConfiguration.getPassword(),
-                                                        progress: function (progress) {
-                                                            console.log(progress.pct, progress.msg);
-                                                        }
-                                                    };
-                                                    GitApi.getProjectRefs(options, function (projectRefs) {
-
-                                                    });
-                                                    workingDir.removeRecursively();
+                                                    workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                                                    workingDir.moveToTrash();
                                                 });
                                             }, function (err) {
-                                                workingDir.removeRecursively();
+                                                workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                                                workingDir.moveToTrash();
                                                 Dialogs.cancelModalDialogIfOpen('modal');
                                                 Toast.error(err);
                                             });
                                         },
                                         function (err) {
-                                            workingDir.removeRecursively();
+                                            workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                                            workingDir.moveToTrash();
                                             Dialogs.cancelModalDialogIfOpen('modal');
                                             Toast.error(err);
                                         });
@@ -132,24 +108,6 @@ define(function (require, exports, module) {
                 function(e){
                 });
         });
-    }
-
-    /*function createNewProjectOnTeamworkServer(projectName) {
-        var localPath = getProjectPath(projectName);
-        var remoteURL = GitConfiguration.getRemoteURL();
-        var gitModule = initGitModule();
-        executeCreateProject(gitModule, localPath, remoteURL, projectName);
-    }*/
-
-    function executeCreateProject(gitModule, localPath, remoteURL, projectName) {
-        gitModule.exec(CMD_CREATE_NEW_PROJECT, localPath, remoteURL, projectName)
-            .done(function (success) {
-                Toast.info("Creating Project completed");
-            })
-            .fail(function (err) {
-                console.error(ERROR_SAVING_PROJECT, err);
-                Toast.error("Creating Project failed");
-            });
     }
 
     function getProjectPath(projectName) {
@@ -195,11 +153,6 @@ define(function (require, exports, module) {
     function buildFilePathForElement(fragmentDirectory, id) {
         var convertedId = id.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         return fragmentDirectory + convertedId + "." + Constants.FRAG_EXT;
-    }
-
-    function initGitModule() {
-        GitBase.init();
-        return GitBase.getGitNodeDomain();
     }
 
     //Backend
