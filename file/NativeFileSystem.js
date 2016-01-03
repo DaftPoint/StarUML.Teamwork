@@ -598,38 +598,47 @@ define(function (require, exports, module) {
             if(data instanceof Uint8Array) {
                 data = ua2text(data);
             }
-            brackets.fs.writeFile(fileEntry.fullPath, data, _FSEncodings.UTF8, function (err) {
-                if ((err !== brackets.fs.NO_ERROR) && self.onerror) {
-                    var fileError = new NativeFileError(NativeFileSystem._fsErrorToDOMErrorName(err));
 
-                    // TODO (issue #241): set readonly FileSaver.error attribute
-                    // self._error = fileError;
-                    self.onerror(fileError);
+            var fileWrite = function(path, data, encoding) {
+                brackets.fs.writeFile(path, data, encoding, function (err) {
+                    if ((err !== brackets.fs.NO_ERROR) && self.onerror) {
+                        var fileError = new NativeFileError(NativeFileSystem._fsErrorToDOMErrorName(err));
 
-                    // TODO (issue #241): partial write, update length and position
-                }
-                // else {
+                        // TODO (issue #241): set readonly FileSaver.error attribute
+                        // self._error = fileError;
+                        self.onerror(fileError);
+
+                        // TODO (issue #241): partial write, update length and position
+                    }
+                    // else {
                     // TODO (issue #241): After changing data argument to Blob, use
                     // Blob.size to update position and length upon successful
                     // completion of a write.
 
                     // self.position = ;
                     // self.length = ;
-                // }
+                    // }
 
-                // DONE is set regardless of error
-                self._readyState = NativeFileSystem.FileSaver.DONE;
+                    // DONE is set regardless of error
+                    self._readyState = NativeFileSystem.FileSaver.DONE;
 
-                if (self.onwrite) {
-                    // TODO (issue #241): progressevent
-                    self.onwrite();
-                }
+                    if (self.onwrite) {
+                        // TODO (issue #241): progressevent
+                        self.onwrite();
+                    }
 
-                if (self.onwriteend) {
-                    // TODO (issue #241): progressevent
-                    self.onwriteend();
-                }
-            });
+                    if (self.onwriteend) {
+                        // TODO (issue #241): progressevent
+                        self.onwriteend();
+                    }
+                });
+            }
+
+            try {
+                fileWrite(fileEntry.fullPath, data, _FSEncodings.UTF8);
+            } catch(err) {
+                fileWrite(fileEntry.fullPath, data, _FSEncodings.UTF8);//TODO: ONLY A WORKAROUND FOR QUOTA_EXCEEDED_ERROR!!!! FIND FIX
+            }
         };
 
         /**

@@ -30,6 +30,8 @@ define(function(require, exports, module) {
 
         var localPath = loadLocalWorkingDirectory(projectName);
         var remoteURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
+        var workingDir = FileSystem.getDirectoryForPath(localPath);
+        workingDir.moveToTrash();
         GitBase.getProjectsRootDir(localPath, function (workingDir) {
             //TODO: REFACTORING!!!
             var options = {
@@ -69,7 +71,7 @@ define(function(require, exports, module) {
                                 Toast.info("TeamworkProject created...");
                                 Dialogs.cancelModalDialogIfOpen('modal');
                                 workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
-                                workingDir.moveToTrash();
+                                workingDir.unlink();
                                 promise.resolve();
                             });
                         /*}, function (err) {
@@ -80,7 +82,7 @@ define(function(require, exports, module) {
                          promise.reject(););*/
                     }, function (err) {
                         workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
-                        workingDir.moveToTrash();
+                        workingDir.unlink();
                         Dialogs.cancelModalDialogIfOpen('modal');
                         Toast.error(err);
                         promise.reject();
@@ -88,7 +90,7 @@ define(function(require, exports, module) {
                 },
                 function (err) {
                     workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
-                    workingDir.moveToTrash();
+                    workingDir.unlink();
                     Dialogs.cancelModalDialogIfOpen('modal');
                     Toast.error(err);
                     promise.reject();

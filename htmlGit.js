@@ -6659,6 +6659,7 @@
             fileErrorFunc: function (onError) {
                 if (!onError) {
                     return function () {
+                        console.error("Error");
                     };
                 }
                 return function (e) {
@@ -7509,7 +7510,7 @@
                                 localHeadRef = remoteHeadRef;
                             }
                         }
-
+                        //TODO: REFACTORING!!!
                         mkfile(gitDir, "HEAD", 'ref: ' + localHeadRef.name + '\n', function () {
                             mkfile(gitDir, localHeadRef.name, localHeadRef.sha + '\n', function () {
                                 remote.fetchRef([localHeadRef], null, null, depth, null, function (objects, packData, common, shallow) {
@@ -7534,8 +7535,9 @@
                                         };
                                         packIdxDataStr = ua2text(packIdxDataStr);
                                         packIdxDataStr = '\ufeff' + packIdxDataStr;
-                                        mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr);
-
+                                        mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr, undefined, function(err) {
+                                            mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr);//TODO: TRY AGAIN WORKAROUND
+                                        });
                                         var packIdx = new PackIndex(packIdxData);
                                         store.loadWith(objectsDir, [{pack: new Pack(packData, self), idx: packIdx}]);
                                         progress({pct: 95, msg: "Building file tree from pack. Be patient..."});
@@ -8619,7 +8621,9 @@
                                                     if (counter.x == packEntries.length) {
                                                         callback();
                                                     }
-                                                }, fe);
+                                                }, function(err) {
+                                                    console.error(err, " : ", entry);
+                                                });
                                             }, fe);
                                         });
                                     }
