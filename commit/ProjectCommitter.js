@@ -10,8 +10,8 @@ define(function(require, exports, module) {
     //Imports
     var OpenProject         = require("../git/OpenProject");
     var SaveProject         = require("../git/SaveProject");
-    var GitBase             = require("git/Base");
-    var GitConfiguration    = require("git/GitConfiguration");
+    var GitBase             = require("../git/Base");
+    var GitConfiguration    = require("../git/GitConfiguration");
     var GitApi              = require("../htmlGit");
     var ProgressDialog      = require("../dialogs/ProgressDialog");
 
@@ -52,13 +52,6 @@ define(function(require, exports, module) {
                         commitMsg: 'Creating Project: ' + projectName
                     };
                     GitApi.commit(options, function() {
-                        /*var options = {
-                            dir: workingDir,
-                            username: GitConfiguration.getUsername(),
-                            password: GitConfiguration.getPassword(),
-                            progress: ProgressDialog.showProgress("Pulling Teamwork-Project...", "Connecting to server...")
-                        };
-                        GitApi.pull(options, function() {*/
                             var options = {
                                 dir: workingDir,
                                 url: remoteURL,
@@ -74,12 +67,6 @@ define(function(require, exports, module) {
                                 workingDir.unlink();
                                 promise.resolve();
                             });
-                        /*}, function (err) {
-                         workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
-                         workingDir.moveToTrash();
-                         Dialogs.cancelModalDialogIfOpen('modal');
-                         Toast.error(err);
-                         promise.reject(););*/
                     }, function (err) {
                         workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
                         workingDir.unlink();

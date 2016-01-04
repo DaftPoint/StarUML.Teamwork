@@ -905,25 +905,18 @@ define(function (require, exports, module) {
                 createDirectoryEntry();
             } else if (err === FileSystemError.NOT_FOUND) {
                 // ERR_NOT_FOUND implies we write a new, empty file
-
                 // create the file
                 if (options.create) {
-                    // TODO: Pass permissions. The current implementation of fs.makedir() always
-                    // creates the directory with the full permissions available to the current user.
-
-                    /*var mode = parseInt("0777", 8);
-                    brackets.fs.makedir(directoryFullPath, mode, function (err) {
-                        if (err) {
-                            createDirectoryError(err);
-                        } else {
-                            createDirectoryEntry();
-                        }
-                    });*/
                     var directory = FileSystem.getDirectoryForPath(directoryFullPath);
-                    var acceptedError = "AlreadyExists";
-                    directory.create(function(err, stat) {
-                        if(err && err != acceptedError) {
-                            createDirectoryError(err);
+                    directory.exists(function(err, exists) {
+                        if(!exists) {
+                            directory.create(function(err, stat) {
+                                if(err && err != FileSystemError.ALREADY_EXISTS) {
+                                    createDirectoryError(err);
+                                } else {
+                                    createDirectoryEntry();
+                                }
+                            });
                         } else {
                             createDirectoryEntry();
                         }

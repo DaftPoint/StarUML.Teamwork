@@ -6838,6 +6838,30 @@
 
             }
 
+            //TODO: REFACTORING!!!
+            var removeRequest = function (refPaths) {
+
+
+                var pktLine = function (refPath) {
+                    refPath.head = refPath.head || '0000000000000000000000000000000000000000';
+                    return  refPath.sha + ' ' + refPath.head + ' ' + refPath.name;
+                }
+                var bb = []; //new BlobBuilder();
+                var str = pktLine(refPaths[0]) + '\0report-status\n';
+                str = padWithZeros(str.length + 4) + str;
+                bb.push(str);
+                for (var i = 1; i < refPaths.length; i++) {
+                    if (!refPaths[i].head) continue;
+                    var val = pktLine(refPaths[i]) + '\n';
+                    val = padWithZeros(val.length + 4)
+                    bb.push(val);
+                }
+                bb.push('0000');
+                var blob = new Blob(bb);
+                return blob;
+
+            }
+
             var refWantRequest = function (wantRefs, haveRefs, shallow, depth, moreHaves) {
                 var str = "0067want " + wantRefs[0].sha + " multi_ack_detailed side-band-64k thin-pack ofs-delta\n"
                 for (var i = 1; i < wantRefs.length; i++) {
@@ -7134,6 +7158,39 @@
                      }
                      });
                      });*/
+                },
+
+                this.removeRefs = function (refPaths, success, progress) {
+                    var url = this.makeUri('/git-receive-pack');
+                    var body = removeRequest(refPaths);
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("POST", url, true, username, password);
+                    xhr.onload = function (evt) {
+                        if (xhr.readyState == 4) {
+                            if (xhr.status == 200) {
+                                var msg = xhr.response;
+                                if (msg.indexOf('000eunpack ok') == 0) {
+                                    success();
+                                }
+                                else {
+                                    error({type: errutils.UNPACK_ERROR, msg: errutils.UNPACK_ERROR_MSG});
+                                }
+                            }
+                            else {
+                                var obj = {url: url, type: 'POST'};
+                                ajaxErrorHandler.call(obj, xhr);
+                            }
+                        }
+                    }
+                    xhr.setRequestHeader('Content-Type', 'application/x-git-receive-pack-request');
+                    var bodySize = (body.size / 1024).toFixed(2);
+                    xhr.upload.onprogress = function (evt) {
+                        progress({
+                            pct: evt.loaded / body.size * 100,
+                            msg: 'Sending ' + (evt.loaded / 1024).toFixed(2) + '/' + bodySize + " KB"
+                        });
+                    }
+                    xhr.send(body);
                 }
 
             this.makeUri = function (path, extraOptions) {
@@ -7523,24 +7580,30 @@
                                     packNameSha = Crypto.SHA1(sortedShas);
 
                                     var packName = 'pack-' + packNameSha;
-                                    mkdirs(gitDir, 'objects', function (objectsDir) {
-                                        mkfile(objectsDir, 'pack/' + packName + '.pack', packData.buffer);
-                                        packIdxDataStr = new Uint8Array(packIdxData);
-                                        var ua2text =function(ua) {
-                                            var s = '';
-                                            for (var i = 0; i < ua.length; i++) {
-                                                s += String.fromCharCode(ua[i]);
-                                            }
-                                            return s;
-                                        };
-                                        packIdxDataStr = ua2text(packIdxDataStr);
-                                        packIdxDataStr = '\ufeff' + packIdxDataStr;
-                                        mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr);
-                                        var packIdx = new PackIndex(packIdxData);
-                                        store.loadWith(objectsDir, [{pack: new Pack(packData, self), idx: packIdx}]);
-                                        progress({pct: 95, msg: "Building file tree from pack. Be patient..."});
-                                        _createCurrentTreeFromPack(dir, store, localHeadRef.sha, function () {
-                                            createInitialConfig(shallow, localHeadRef, callback);
+                                    mkdirs(gitDir, 'objects', function (objectsDir) {//TODO: REFACTORING!!!
+                                        var promise = $.Deferred();
+                                        mkdirs(objectsDir, 'pack', function(packDir) {
+                                            mkfile(packDir, packName + '.pack', packData.buffer);
+                                            packIdxDataStr = new Uint8Array(packIdxData);
+                                            var ua2text =function(ua) {
+                                                var s = '';
+                                                for (var i = 0; i < ua.length; i++) {
+                                                    s += String.fromCharCode(ua[i]);
+                                                }
+                                                return s;
+                                            };
+                                            packIdxDataStr = ua2text(packIdxDataStr);
+                                            packIdxDataStr = '\ufeff' + packIdxDataStr;
+                                            mkfile(packDir, packName + '.idx', packIdxDataStr);
+                                            promise.resolve();
+                                        });
+                                        promise.done(function() {
+                                            var packIdx = new PackIndex(packIdxData);
+                                            store.loadWith(objectsDir, [{pack: new Pack(packData, self), idx: packIdx}]);
+                                            progress({pct: 95, msg: "Building file tree from pack. Be patient..."});
+                                            _createCurrentTreeFromPack(dir, store, localHeadRef.sha, function () {
+                                                createInitialConfig(shallow, localHeadRef, callback);
+                                            });
                                         });
                                     }, ferror);
                                 }, null, packProgress);
@@ -8174,10 +8237,20 @@
                                                 packNameSha = Crypto.SHA1(sortedShas);
 
                                                 var packName = 'pack-' + packNameSha;
-                                                mkdirs(store.dir, '.git/objects', function (objectsDir) {
+                                                mkdirs(store.dir, '.git/objects', function (objectsDir) {//TODO: REFACTORING!!!
                                                     store.objectsDir = objectsDir;
                                                     mkfile(objectsDir, 'pack/' + packName + '.pack', packData.buffer);
-                                                    mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxData);
+                                                    packIdxDataStr = new Uint8Array(packIdxData);
+                                                    var ua2text =function(ua) {
+                                                        var s = '';
+                                                        for (var i = 0; i < ua.length; i++) {
+                                                            s += String.fromCharCode(ua[i]);
+                                                        }
+                                                        return s;
+                                                    };
+                                                    packIdxDataStr = ua2text(packIdxDataStr);
+                                                    packIdxDataStr = '\ufeff' + packIdxDataStr;
+                                                    mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr);
 
                                                     var packIdx = new PackIndex(packIdxData);
                                                     if (!store.packs) {
@@ -8227,8 +8300,17 @@
         return pull;
     });
     define('commands/push', ['formats/smart_http_remote', 'formats/pack', 'utils/progress_chunker', 'utils/errors'], function (SmartHttpRemote, Pack, ProgressChunker, errutils) {
+        //TODO: REFACTORING!!!
         var push = function (options, success, error) {
+            var removeExistingBranch = options.remove;
+            if(removeExistingBranch) {
+                removeBranch.call(this, options, success, error);
+            } else {
+                pushToBranch.call(this, options, success, error);
+            }
+        }
 
+        var pushToBranch = function (options, success, error) {
             var store = options.objectStore,
                 username = options.username,
                 password = options.password,
@@ -8271,6 +8353,57 @@
                 });
             });
         }
+
+        var removeBranch = function (options, success, error) {
+            var store = options.objectStore,
+                username = options.username,
+                password = options.password,
+                progress = options.progress || function () {
+                    };
+
+            var remotePushProgress;
+            if (options.progress) {
+                var chunker = new ProgressChunker(progress);
+                remotePushProgress = chunker.getChunk(40, .6);
+            }
+            else {
+                remotePushProgress = function () {
+                };
+            }
+
+            store.getConfig(function (config) {
+                var url = config.url || options.url;
+
+                if (!url) {
+                    error({type: errutils.PUSH_NO_REMOTE, msg: errutils.PUSH_NO_REMOTE_MSG});
+                    return;
+                }
+
+                var remote = new SmartHttpRemote(store, "origin", url, username, password, error);
+                progress({pct: 0, msg: 'Contacting server...'});
+                remote.fetchReceiveRefs(function (refs) {
+                    var remoteRef, headRef;
+                    store.getHeadRef(function (refName) {
+                        headRef = refName;
+                        for (var i = 0; i < refs.length; i++) {
+                            if (refs[i].name == headRef) {
+                                remoteRef = refs[i];
+                                break;
+                            }
+                        }
+                        progress({pct: 20, msg: 'Building pack...'});
+                        progress({pct: 40, msg: 'Sending pack...'});
+                        remote.removeRefs([remoteRef], function () {
+                            config.remoteHeads = config.remoteHeads || {};
+                            config.remoteHeads[ref.name] = ref.head;
+                            config.url = url;
+                            store.setConfig(config, success);
+                        }, remotePushProgress);
+                    }, error);
+                });
+            });
+        }
+
         return push;
     });
     define('commands/branch', ['utils/file_utils', 'utils/errors'], function (fileutils, errutils) {
@@ -9396,6 +9529,7 @@
                             objectStore: objectStore,
                             dir: options.dir,
                             url: options.url,
+                            remove: options.remove,//TODO:REFACTORING!!!
                             username: options.username,
                             password: options.password,
                             progress: options.progress

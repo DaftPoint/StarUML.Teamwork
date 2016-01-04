@@ -11,15 +11,18 @@ define(function (require, exports, module) {
     var Repository      	= app.getModule("core/Repository");
     var ProjectManager  	= app.getModule("engine/ProjectManager");
     var Async  	            = app.getModule("utils/Async");
+    var Dialogs             = app.getModule('dialogs/Dialogs');
+    var FileSystem          = app.getModule("filesystem/FileSystem");
 
-    var GitBase             = require("git/Base");
-    var GitConfiguration    = require("git/GitConfiguration");
+    var GitBase             = require("../git/Base");
+    var GitConfiguration    = require("../git/GitConfiguration");
+    var GitApi              = require("../htmlGit");
+    var ProgressDialog      = require("../dialogs/ProgressDialog");
 
     //Constants
     var ERROR_LOCKING_PROJECT    = "[Locking Project failed:] ";
     var ERROR_LOCKING_ELEMENTS   = "[Locking Elements failed:] ";
     var ERROR_UNLOCKING_ELEMENTS = "[Unlocking Elements failed:] ";
-    var ERROR_UPDATING_LOCK_INFO = "[Updating Lock-Info failed:] ";
 
     var NOT_LOCKED            = "NOT_LOCKED";
     var LOCKED                = "LOCKED";
@@ -39,20 +42,139 @@ define(function (require, exports, module) {
 
     function lockGivenElements(elements) {
         var workingPath = GitConfiguration.getLocalWorkingDirectory();
-        var remoteURL = GitConfiguration.getRemoteURL();
-        var gitModule = initGitModule();
-        var projectName = ProjectManager.getFilename();
+        var remoteURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
+        var projectName = GitBase.getTeamworkProjectName();
         var username = GitConfiguration.getUsername();
-        executeLockGivenElements(gitModule, workingPath, remoteURL, elements,  username, projectName);
+
+
+        elements.forEach(function (element, index, array) {
+            var elementID = element.escapedID;
+            var unescapedElementId = element.elementID;
+            var elementWorkingPath = workingPath + "/locking/" + projectName + "/" + elementID;
+            GitBase.getProjectsRootDir(elementWorkingPath, function (workingDir) {
+                var branchName = elementID;
+                //TODO: REFACTORING!!!
+                workingDir.getDirectory('.git', {create:true}, function(gitDir){
+                        gitDir.getDirectory('objects', {create: true}, function(objectsDir){
+                            var file = FileSystem.getFileForPath(elementWorkingPath + "/.git/HEAD");
+                            file.write('ref: refs/heads/locks/' + projectName + '/' + branchName + '\n', function() {
+                                var options = {
+                                    dir: workingDir,
+                                    branch: 'locks/' + projectName + '/' + branchName
+                                };
+                                GitApi.branch(options, function () {
+                                    var options = {
+                                        dir: workingDir,
+                                        branch: 'locks/' + projectName + '/' + branchName
+                                    };
+                                    GitApi.checkout(options, function () {
+                                        var file = FileSystem.getFileForPath(elementWorkingPath + "/lockedBy.json");
+                                        var value = {
+                                            lockedBy: username,
+                                            elementID: unescapedElementId
+                                        };
+                                        file.write(JSON.stringify(value), function() {
+                                            var options = {
+                                                dir: workingDir,
+                                                name: GitConfiguration.getUsername(),
+                                                email: GitConfiguration.getUsername() + '@noreply.com',
+                                                commitMsg: 'Locking Element: ' + unescapedElementId
+                                            };
+                                            GitApi.commit(options, function() {
+                                                var options = {
+                                                    dir: workingDir,
+                                                    url: remoteURL,
+                                                    username: GitConfiguration.getUsername(),
+                                                    password: GitConfiguration.getPassword(),
+                                                    progress: ProgressDialog.showProgress("Locking Element...", "Connecting to server...")
+                                                };
+                                                GitApi.push(options, function() {
+                                                    GitBase.setTeamworkProjectName(projectName);
+                                                    Toast.info("TeamworkProject created...");
+                                                    Dialogs.cancelModalDialogIfOpen('modal');
+                                                    workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                                                    workingDir.moveToTrash();
+                                                });
+                                            }, function (err) {
+                                                workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                                                workingDir.moveToTrash();
+                                                Dialogs.cancelModalDialogIfOpen('modal');
+                                                Toast.error(err);
+                                            });
+                                        });
+                                        },
+                                        function (err) {
+                                            workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                                            workingDir.moveToTrash();
+                                            Dialogs.cancelModalDialogIfOpen('modal');
+                                            Toast.error(err);
+                                        });
+                                });
+                            });
+                        }, function(e) { console.log(e); });
+                    },
+                    function(e){
+                    });
+            });
+        });
     }
 
     function unlockGivenElements(elements) {
         var workingPath = GitConfiguration.getLocalWorkingDirectory();
-        var remoteURL = GitConfiguration.getRemoteURL();
-        var gitModule = initGitModule();
-        var projectName = ProjectManager.getFilename();
+        var remoteURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
+        var projectName = GitBase.getTeamworkProjectName();
         var username = GitConfiguration.getUsername();
-        executeUnlockGivenElements(gitModule, workingPath, remoteURL, elements,  username, projectName);
+
+        elements.forEach(function (element, index, array) {
+            var branchName = element;
+            var elementWorkingPath = workingPath + "/locking/" + projectName + "/" + branchName;
+
+            GitBase.getProjectsRootDir(elementWorkingPath, function (workingDir) {
+                //TODO: REFACTORING!!!
+                workingDir.getDirectory('.git', {create:true}, function(gitDir){
+                        gitDir.getDirectory('objects', {create: true}, function(objectsDir){
+                            var file = FileSystem.getFileForPath(elementWorkingPath + "/.git/HEAD");
+                            file.write('ref: refs/heads/locks/' + projectName + '/' + branchName + '\n', function() {
+                                var options = {
+                                    dir: workingDir,
+                                    branch: 'locks/' + projectName + '/' + branchName
+                                };
+                                GitApi.branch(options, function () {
+                                    var options = {
+                                        dir: workingDir,
+                                        branch: 'locks/' + projectName + '/' + branchName
+                                    };
+                                    GitApi.checkout(options, function () {
+                                            var options = {
+                                                dir: workingDir,
+                                                url: remoteURL,
+                                                remove: true,
+                                                username: GitConfiguration.getUsername(),
+                                                password: GitConfiguration.getPassword(),
+                                                progress: ProgressDialog.showProgress("Locking Element...", "Connecting to server...")
+                                            };
+                                            GitApi.push(options, function() {
+                                                GitBase.setTeamworkProjectName(projectName);
+                                                Toast.info("TeamworkProject created...");
+                                                Dialogs.cancelModalDialogIfOpen('modal');
+                                                workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                                                workingDir.moveToTrash();
+                                            });
+                                        },
+                                        function (err) {
+                                            workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                                            workingDir.moveToTrash();
+                                            Dialogs.cancelModalDialogIfOpen('modal');
+                                            Toast.error(err);
+                                        });
+                                });
+                            });
+                        }, function(e) { console.log(e); });
+                    },
+                    function(e){
+                    });
+            });
+        });
     }
 
     function updateLockInfo() {
@@ -61,14 +183,6 @@ define(function (require, exports, module) {
         var gitModule = initGitModule();
         var projectName = ProjectManager.getFilename();
         executeUpdateLockInfo(gitModule, localPath, remoteURL, projectName);
-    }
-
-    function updateProject() {
-        throw "Not yet implemented";
-    }
-
-    function uploadChanges() {
-        throw "Not yet implemented";
     }
 
     function loadProject() {
@@ -123,32 +237,6 @@ define(function (require, exports, module) {
         ;
     }
 
-    function executeLockGivenElements(gitModule, workingPath, remotePath, elementIDs,  username, projectName) {
-        gitModule.exec(CMD_LOCK_GIVEN_ELEMENTS, workingPath, remotePath, elementIDs, username, projectName)
-            .done(function (lockedElementIDs) {
-                console.log("locked: " + lockedElementIDs);
-            })
-            .fail(function (err) {
-                if(err) {
-                    console.error(ERROR_LOCKING_ELEMENTS, err);
-                }
-            })
-        ;
-    }
-
-    function executeUnlockGivenElements(gitModule, workingPath, remotePath, elementIDs,  username, projectName) {
-        gitModule.exec(CMD_UNLOCK_GIVEN_ELEMENTS, workingPath, remotePath, elementIDs, username, projectName)
-            .done(function (lockedElementIDs) {
-                console.log("removed lock: " + lockedElementIDs);
-            })
-            .fail(function (err) {
-                if(err) {
-                    console.error(ERROR_UNLOCKING_ELEMENTS, err);
-                }
-            })
-        ;
-    }
-
     function executeUpdateLockInfo(gitModule, workingPath, remotePath, projectName) {
         gitModule.exec(CMD_LOAD_KNOWN_LOCKS, workingPath, remotePath, projectName)
             .done(function (locks) {
@@ -186,8 +274,6 @@ define(function (require, exports, module) {
 
     //Backend
     exports.lockWholeTeamworkProject = lockWholeProject;
-    exports.uploadChanges = uploadChanges;
-    exports.updateProject = updateProject;
     exports.updateProjectLockInfo = updateLockInfo;
     exports.lockGivenElements = lockGivenElements;
     exports.unlockGivenElements = unlockGivenElements;
