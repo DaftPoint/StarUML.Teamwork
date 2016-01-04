@@ -21,15 +21,11 @@ define(function (require, exports, module) {
 
     //Constants
     var ERROR_LOCKING_PROJECT    = "[Locking Project failed:] ";
-    var ERROR_LOCKING_ELEMENTS   = "[Locking Elements failed:] ";
-    var ERROR_UNLOCKING_ELEMENTS = "[Unlocking Elements failed:] ";
 
     var NOT_LOCKED            = "NOT_LOCKED";
     var LOCKED                = "LOCKED";
 
     var CMD_LOCK_PROJECT      = "lockProject";
-    var CMD_LOCK_GIVEN_ELEMENTS= "lockGivenElements";
-    var CMD_UNLOCK_GIVEN_ELEMENTS= "unlockGivenElements";
     var CMD_LOAD_KNOWN_LOCKS      = "loadKnownLocks";
 
     //Variables
@@ -123,7 +119,6 @@ define(function (require, exports, module) {
         var workingPath = GitConfiguration.getLocalWorkingDirectory();
         var remoteURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
         var projectName = GitBase.getTeamworkProjectName();
-        var username = GitConfiguration.getUsername();
 
         elements.forEach(function (element, index, array) {
             var branchName = element;

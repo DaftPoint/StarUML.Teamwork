@@ -82,7 +82,7 @@ define(function (require, exports, module) {
                             progress: ProgressDialog.showProgress("Loading Teamwork-Project...", "Connecting to server...")
                         };
                         GitApi.clone(options, function () {
-                                loadProjectFromFragments("Project");
+                                loadProjectFromFragments("Project", workingDir);
                                 GitBase.setTeamworkProjectName(projectName);
                                 Dialogs.cancelModalDialogIfOpen('modal');
                                 Toast.info("Opening Project...");
@@ -117,7 +117,7 @@ define(function (require, exports, module) {
         $(exports).triggerHandler('teamworkProjectLoaded', [projectName]);
     }
 
-    function loadProjectFromFragments(projectName) {
+    function loadProjectFromFragments(projectName, workingDir) {
         cleanCurrentWork();
         var directory = loadWorkingDirectory(projectName);
         directory.getContents(function (err, content, stats) {
@@ -137,7 +137,17 @@ define(function (require, exports, module) {
             masterPromise.done(function() {
                 var _project = ProjectJSONBuilder.buildProjectFromFragments(fragments);
                 openProjectFromJsonData(_project);
-                directory.moveToTrash();
+                var options = {
+                    dir: workingDir,
+                    url: GitConfiguration.getRemoteURLWithoutUsernameAndPasswort(),
+                    username: GitConfiguration.getUsername(),
+                    password: GitConfiguration.getPassword(),
+                    projectName: GitBase.getTeamworkProjectName()
+                }
+                GitApi.getProjectLockRefs(options, function(locks) {
+                    console.log(locks);
+                    directory.moveToTrash();
+                });
                 LockElement.updateProjectLockInfo();
             });
         });

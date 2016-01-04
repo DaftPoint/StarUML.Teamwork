@@ -6774,6 +6774,7 @@
             this.name = name;
             this.refs = {};
             this.projects = {};//TODO: Refactoring!!!
+            this.locks = {};//TODO: Refactoring!!!
             this.url = repoUrl.replace(/\?.*/, "").replace(/\/$/, "");
             username = username || "";
             password = password || "";
@@ -6966,15 +6967,46 @@
                     }
                 });
             }
+            //TODO: Refactoring!!!
+            this.fetchLockRefs = function (projectName, callback) {
+                var remote = this,
+                    uri = this.makeUri('/info/refs', {service: "git-upload-pack"});
+                doGet(uri, function (data) {
+                    var discInfo = parseDiscovery(data)
+                    var i, ref
+                    for (i = 0; i < discInfo.refs.length; i++) {
+                        ref = discInfo.refs[i]
+                        remote.addLockRef(projectName, ref.name, ref.sha)
+                    }
+                    if (callback != "undefined") {
+                        callback(discInfo.refs)
+                    }
+                });
+            }
 
             // Add a ref to this remote. fullName is of the form:
             //   refs/heads/master or refs/tags/123
-            this.addProjectRef = function (fullName, sha) {
+            this.addProjectRef = function (fullName, sha) {//TODO: REFACTORING!!!
                 var type, name
                 if (fullName.slice(0, 20) == "refs/heads/projects/") {
-                    type = fullName.split("/")[1]
-                    name = fullName.split("/")[3]
+                    type = fullName.split("/")[1];
+                    name = fullName.split("/")[3];
                     this.projects[name] = {
+                        name: name,
+                        sha: sha,
+                        remote: this,
+                        type: type
+                    }
+                }
+            }
+
+            this.addLockRef = function (projectName, fullName, sha) {//TODO: REFACTORING!!!
+                var type, name
+                var sliceLength = ("refs/heads/locks/" + projectName + "/").length;
+                if (fullName.slice(0, sliceLength) == "refs/heads/locks/" + projectName + "/") {
+                    type = fullName.split("/")[1];
+                    name = fullName.split("/")[4];
+                    this.locks[name] = {
                         name: name,
                         sha: sha,
                         remote: this,
@@ -7233,6 +7265,10 @@
 
             this.getProjectRefs = function () {//TODO: Refactoring!!!
                 return _(this.projects).values()
+            }
+
+            this.getProjectLockRefs = function () {//TODO: Refactoring!!!
+                return _(this.locks).values()
             }
 
             this.getRef = function (name) {
@@ -9446,6 +9482,26 @@
                     var remote = new SmartHttpRemote(objectStore, "refs/heads", remoteProjectURL, username, password);
                     remote.fetchProjectRefs(function () {
                         var remoteRefs = remote.getProjectRefs();
+                        success(remoteRefs);
+                        return remoteRefs;
+                    })
+                });
+            },
+            getProjectLockRefs: function (options, success, error) {
+                success = success || function () {
+                    };
+                error = error || function () {
+                    };
+                var objectStore = new FileObjectStore(options.dir);
+                objectStore.init(function () {
+                    var remoteProjectURL = options.url;
+                    var username = options.username;
+                    var password = options.password;
+                    var projectName = options.projectName;
+
+                    var remote = new SmartHttpRemote(objectStore, "refs/heads", remoteProjectURL, username, password);
+                    remote.fetchLockRefs(projectName, function () {
+                        var remoteRefs = remote.getProjectLockRefs();
                         success(remoteRefs);
                         return remoteRefs;
                     })
