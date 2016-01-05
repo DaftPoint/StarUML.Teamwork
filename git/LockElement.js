@@ -25,7 +25,6 @@ define(function (require, exports, module) {
     var NOT_LOCKED            = "NOT_LOCKED";
     var LOCKED                = "LOCKED";
 
-    var CMD_LOCK_PROJECT      = "lockProject";
     var CMD_LOAD_KNOWN_LOCKS      = "loadKnownLocks";
 
     //Variables
@@ -33,7 +32,7 @@ define(function (require, exports, module) {
     //Functions
 
     function lockWholeProject() {
-        lockProject(loadProject());
+        throw Error("Not implemented");
     }
 
     function lockGivenElements(elements) {
@@ -41,8 +40,6 @@ define(function (require, exports, module) {
         var remoteURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
         var projectName = GitBase.getTeamworkProjectName();
         var username = GitConfiguration.getUsername();
-
-
         elements.forEach(function (element, index, array) {
             var elementID = element.escapedID;
             var unescapedElementId = element.elementID;
@@ -67,7 +64,8 @@ define(function (require, exports, module) {
                                         var file = FileSystem.getFileForPath(elementWorkingPath + "/lockedBy.json");
                                         var value = {
                                             lockedBy: username,
-                                            elementID: unescapedElementId
+                                            elementID: unescapedElementId,
+                                            lockingDate: new Date().toJSON().slice(0,10)
                                         };
                                         file.write(JSON.stringify(value), function() {
                                             var options = {
@@ -174,97 +172,59 @@ define(function (require, exports, module) {
 
     function updateLockInfo() {
         var localPath = GitConfiguration.getLocalWorkingDirectory();
-        var remoteURL = GitConfiguration.getRemoteURL();
-        var gitModule = initGitModule();
-        var projectName = ProjectManager.getFilename();
-        executeUpdateLockInfo(gitModule, localPath, remoteURL, projectName);
-    }
+        var projectName = GitBase.getTeamworkProjectName();
 
-    function loadProject() {
-        return ProjectManager.getProject();
-    }
-
-    function lockProject(element) {
-        var checkValue = LOCKED;
-        if(isElementNotUndefined(element.ownedElements)) {
-            checkValue = lockOwnedObjects(element.ownedElements);
-        }
-        /*if(isElementNotUndefined(element.ownedViews)) {
-            checkValue = lockOwnedObjects(element.ownedViews);
-        }*/
-        lockSingleElement(element, checkValue);
-    }
-
-    function lockOwnedObjects(elements) {
-        if(elements == null) return;
-        for(var innerElement in elements) {
-            innerElement = elements[innerElement];
-            if((innerElement._id == null) || isElementUndefined(innerElement._id)) return NOT_LOCKED;
-            if (isElementNotUndefined(innerElement.ownedElements)) {
-                lockOwnedObjects(innerElement.ownedElements);
+        GitBase.getProjectsRootDir(localPath, function(workingDir) {
+            var options = {
+                dir: workingDir,
+                url: GitConfiguration.getRemoteURLWithoutUsernameAndPasswort(),
+                username: GitConfiguration.getUsername(),
+                password: GitConfiguration.getPassword(),
+                projectName: GitBase.getTeamworkProjectName()
             }
-            lockSingleElement(innerElement);
-        }
+            GitApi.getProjectLockRefs(options, function(locks) {
+                executeUpdateLockInfo(locks, projectName);
+                workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                workingDir.moveToTrash();
+            });
+        });
     }
 
-    function lockSingleElement(element, checkValue) {
-        if (!isObjectLocked(checkValue)) element.ownedElements = null;
-        var localPath = GitConfiguration.getLocalWorkingDirectory();
+    function executeUpdateLockInfo(locks, projectName) {
         var remoteURL = GitConfiguration.getRemoteURL();
-        var gitModule = initGitModule();
-        var username = GitConfiguration.getUsername();
-        var projectName = ProjectManager.getFilename();
-        var elementId = element._id;
-        elementId = elementId.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        executeLockProject(gitModule, localPath, remoteURL, elementId, element._id, username, projectName);
-    }
-
-    function executeLockProject(gitModule, workingPath, remotePath, elementID, unescapedElementId,  username, projectName) {
-        gitModule.exec(CMD_LOCK_PROJECT, workingPath, remotePath, elementID, unescapedElementId, username, projectName)
-            .done(function (elementID) {
-                console.log("locked: " + elementID);
-            })
-            .fail(function (err) {
-                if(err) {
-                    console.error(ERROR_LOCKING_PROJECT, err);
-                }
-            })
-        ;
-    }
-
-    function executeUpdateLockInfo(gitModule, workingPath, remotePath, projectName) {
-        gitModule.exec(CMD_LOAD_KNOWN_LOCKS, workingPath, remotePath, projectName)
-            .done(function (locks) {
-                locks.forEach(function(lockInfo, index, array) {
-                    var lockedElement = Repository.get(lockInfo.elementID);
-                    if(lockedElement !== undefined) {//TODO: Only for Test-Purpose. Don't forget to remove!!!
-                        lockedElement.lockElement(lockInfo.lockedBy);
-                    }
-                })
-            })
-            .fail(function (err) {
-                if(err) {
-                    console.error(ERROR_LOCKING_PROJECT, err);
-                }
-            })
-        ;
-    }
-
-    function isObjectLocked(checkValue) {
-        return checkValue != NOT_LOCKED;
-    }
-
-    function initGitModule() {
-        GitBase.init();
-        return GitBase.getGitNodeDomain();
-    }
-
-    function isElementUndefined(element) {
-        return typeof element == 'undefined';
-    }
-
-    function isElementNotUndefined(element){
-        return typeof element !== 'undefined';
+        locks.forEach(function(lockInfo, index, array) {
+            var lockName = lockInfo.name;
+            var localPath = GitConfiguration.getLocalWorkingDirectory();
+            var locksPath = localPath + "/locking/" + projectName + "/" + lockName;
+            GitBase.getProjectsRootDir(locksPath, function(workingDir) {
+                var options = {
+                    dir: workingDir,
+                    url: remoteURL,
+                    branch: 'locks/' + projectName + '/' + lockName,
+                    depth: 1,
+                    username: GitConfiguration.getUsername(),
+                    password: GitConfiguration.getPassword(),
+                    progress: ProgressDialog.showProgress("Loading Teamwork-Project-Locks...", "Connecting to server...")
+                };
+                GitApi.clone(options, function () {
+                    var lockInfoFile = FileSystem.getFileForPath(workingDir.fullPath + "/lockedBy.json");
+                    lockInfoFile.read(function(err, data, stat) {
+                        lockInfoFile = JSON.parse(data);
+                        var lockedElement = Repository.get(lockInfoFile.elementID);
+                        if(lockedElement !== undefined) {//TODO: Only for Test-Purpose. Don't forget to remove!!!
+                            lockedElement.lockElement(lockInfoFile.lockedBy);
+                        }
+                        Dialogs.cancelModalDialogIfOpen('modal');
+                        Toast.info("Locked Element " + lockedElement._id + " ...");
+                    });
+                    },
+                    function (err) {
+                        workingDir.moveToTrash();
+                        Dialogs.cancelModalDialogIfOpen('modal');
+                        Toast.error(err);
+                });
+            });
+        });
     }
 
     //Backend

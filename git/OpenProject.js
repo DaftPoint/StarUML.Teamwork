@@ -113,8 +113,7 @@ define(function (require, exports, module) {
     function openProjectFromJsonData(_project) {
         ProjectManager.loadFromJson(_project);
         Repository.setModified(false);
-        var projectName = _project.name;
-        $(exports).triggerHandler('teamworkProjectLoaded', [projectName]);
+        $(exports).triggerHandler('teamworkProjectLoaded', [GitBase.getTeamworkProjectName()]);
     }
 
     function loadProjectFromFragments(projectName, workingDir) {
@@ -145,10 +144,9 @@ define(function (require, exports, module) {
                     projectName: GitBase.getTeamworkProjectName()
                 }
                 GitApi.getProjectLockRefs(options, function(locks) {
-                    console.log(locks);
+                    LockElement.updateProjectLockInfo(locks);
                     directory.moveToTrash();
                 });
-                LockElement.updateProjectLockInfo();
             });
         });
     }
