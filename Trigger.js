@@ -4,9 +4,12 @@ define(function(require, exports, module) {
     //modules
     var Repository              = app.getModule("core/Repository");
     var ProjectManager          = app.getModule("engine/ProjectManager");
+    var OperationBuilder        = app.getModule("core/OperationBuilder");
+    var Toast 				    = app.getModule("ui/Toast");
 
     //imported modules
-    var OpenProject             = require("git/OpenProject");
+    var OpenProject             = require("./git/OpenProject");
+    var GitConfiguration        = require("./git/GitConfiguration");
 
     function updateTitlebar(projectName) {
         var filename = projectName,
@@ -37,5 +40,44 @@ define(function(require, exports, module) {
         });
     }
 
+    function setupTriggerOnRepository() {
+        var teamworkUser = GitConfiguration.getUsername();
+        var MESSAGE = "One of the elements to change is Locked by someone else. Cannot do Operation";
+        $(Repository).on('beforeExecuteOperation', function (event, operation) {
+            var elements = extractElementsToChange(operation);
+            for (var i = 0, len = operation.ops.length; i < len; i++) {
+                if (operation.ops[i] === OperationBuilder.OP_INSERT || operation.ops[i] === OperationBuilder.OP_REMOVE) {
+
+                }
+                if(operation.ops[i].arg.op !== undefined) {
+                    var oldParent = Repository.get(operation.ops[i].arg.op);
+                    if(oldParent.isLocked() && oldParent.getLockUser() !== teamworkUser) {
+                        Toast.error(MESSAGE);
+                        throw new Error(MESSAGE);
+                    }
+                }
+                if(operation.ops[i].arg.np !== undefined) {
+                    var newParent = Repository.get(operation.ops[i].arg.np);
+                    if(newParent.isLocked() && newParent.getLockUser() !== teamworkUser) {
+                        Toast.error(MESSAGE);
+                        throw new Error(MESSAGE);
+                    }
+                }
+            }
+            for(var elementIndex = 0; elementIndex < elements.length; elementIndex++) {
+                var element = elements[elementIndex];
+                if(element.isLocked() && element.getLockUser() !== teamworkUser) {
+                    Toast.error(MESSAGE);
+                    throw new Error(MESSAGE);
+                }
+            }
+        });
+    }
+
+    function extractElementsToChange(operation) {
+        return Repository.extractChanged(operation);
+    }
+
     exports.setupTriggerOpenProject = setupTriggerOpenProject;
+    exports.setupTriggerOnRepository = setupTriggerOnRepository;
 });

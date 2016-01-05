@@ -72,5 +72,6 @@ define(function (require, exports, module) {
         LockingAttributesElement.addLockingAttributeToElementType();
         LockingAttributesElement.addLockingAttributesToUMLModelElementType();
         Trigger.setupTriggerOpenProject();
+        Trigger.setupTriggerOnRepository();
     });
 });

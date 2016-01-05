@@ -1,10 +1,11 @@
 {
     "name": "daftpoint.teamworkserver",
-    "title": "git Teamwork-Server for StarUML",
+    "title": "Teamwork-Server for StarUML",
     "description": "Extension to provide git functionallity and enable collaborative work.",
-    "homepage": "",
+    "homepage": "https://github.com/DaftPoint/StarUML.Teamwork",
+    "issues": "https://github.com/DaftPoint/StarUML.Teamwork/issues",
     "version": "0.1.0",
-    "keywords": ["Teamwork-Server", "GIT", "Versioning"],
+    "keywords": ["Teamwork-Server", "GIT"],
     "author": {
         "name": "Michael Seiler",
         "email": "mseiler@repsta.com",
@@ -12,6 +13,6 @@
     },
     "license": "",
     "engines": {
-        "staruml": ">=2.0.0"
+        "staruml": "2.5.1"
     }
 }

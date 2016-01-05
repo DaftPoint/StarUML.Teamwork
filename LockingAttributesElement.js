@@ -19,6 +19,7 @@ define(function (require, exports, module) {
 
         type.Element.prototype.lockElement = lockElement;
         type.Element.prototype.setLockUser = setLockUser;
+        type.Element.prototype.getLockUser = getLockUser;
         type.Element.prototype.unlockElement = unlockElement;
         type.Element.prototype.getBaseNodeText = type.Element.prototype.getNodeText;
         type.Element.prototype.getNodeText = getNodeTextWithLock;
@@ -44,6 +45,10 @@ define(function (require, exports, module) {
 
     function setLockUser(username) {
         this.lockedBy = username;
+    }
+
+    function getLockUser() {
+        return this.lockedBy;
     }
 
     function lockElement(username) {
