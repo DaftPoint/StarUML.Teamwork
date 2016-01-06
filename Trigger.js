@@ -43,8 +43,18 @@ define(function(require, exports, module) {
     function setupTriggerOnRepository() {
         var teamworkUser = GitConfiguration.getUsername();
         var MESSAGE = "One of the elements to change is Locked by someone else. Cannot do Operation";
+        var MOVE_VIEWS = "move views";
         $(Repository).on('beforeExecuteOperation', function (event, operation) {
+            var operationName = operation.name;
             var elements = extractElementsToChange(operation);
+
+            if(operationName == MOVE_VIEWS) {
+                if(elements[0]._parent.isLocked() && elements[0]._parent.getLockUser() !== teamworkUser) {
+                    Toast.error(MESSAGE);
+                    throw new Error(MESSAGE);
+                }
+            }
+
             for (var i = 0, len = operation.ops.length; i < len; i++) {
                 if (operation.ops[i] === OperationBuilder.OP_INSERT || operation.ops[i] === OperationBuilder.OP_REMOVE) {
 
