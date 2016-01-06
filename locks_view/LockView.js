@@ -71,6 +71,7 @@ define(function (require, exports, module) {
      * @param {string} role
      */
     function addTeamworkItem(event, message, time, user) {
+        show();
         dataSource.add({
             time: time,
             user: user,
