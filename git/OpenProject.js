@@ -21,6 +21,7 @@ define(function (require, exports, module) {
     var LockElement        = require("git/LockElement");
     var GitApi             = require("../htmlGit");
     var ProgressDialog     = require("../dialogs/ProgressDialog");
+    var TeamworkView       = require("../locks_view/LockView");
 
     //Constants
     var NO_PROJECT_DATA_FOUND_MESSAGE           = "No Project-Data found!";
@@ -86,6 +87,7 @@ define(function (require, exports, module) {
                                 GitBase.setTeamworkProjectName(projectName);
                                 Dialogs.cancelModalDialogIfOpen('modal');
                                 Toast.info("Opening Project...");
+                                TeamworkView.addTeamworkItem("Loading Project", "Loaded Teamwork-project " + projectName, new Date().toJSON().slice(0,10), GitConfiguration.getUsername());
                             },
                             function (err) {
                                 workingDir.moveToTrash();

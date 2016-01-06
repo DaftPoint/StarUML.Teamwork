@@ -17,6 +17,7 @@ define(function (require, exports, module) {
     var Trigger                 = require("./Trigger");
     var Locking                 = require("./locking/ElementLocker");
     var ProjectCommitter        = require("./commit/ProjectCommitter");
+    var TeamworkView            = require("./locks_view/LockView");
 
     //# Define Commands
     var CMD_TEAMWORK         	= 'teamwork';
@@ -65,6 +66,10 @@ define(function (require, exports, module) {
     contextMenuExplorer = ContextMenuManager.getContextMenu(DefaultMenus.contextMenus.EXPLORER);
     contextMenuExplorer.addMenuItem(CMD_LOCK_ELEMENT);
     contextMenuExplorer.addMenuItem(CMD_UNLOCK_ELEMENT);
+
+    AppInit.appReady(function() {
+        TeamworkView.init();
+    });
 
     AppInit.htmlReady(function () {
         ExtensionUtils.loadStyleSheet(module, "styles/dialog.css");
