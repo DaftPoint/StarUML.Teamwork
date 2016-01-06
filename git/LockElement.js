@@ -13,6 +13,7 @@ define(function (require, exports, module) {
     var Async  	            = app.getModule("utils/Async");
     var Dialogs             = app.getModule('dialogs/Dialogs');
     var FileSystem          = app.getModule("filesystem/FileSystem");
+    var ModelExplorerView   = app.getModule("explorer/ModelExplorerView");
 
     var GitBase             = require("../git/Base");
     var GitConfiguration    = require("../git/GitConfiguration");
@@ -20,12 +21,10 @@ define(function (require, exports, module) {
     var ProgressDialog      = require("../dialogs/ProgressDialog");
 
     //Constants
-    var ERROR_LOCKING_PROJECT    = "[Locking Project failed:] ";
 
     var NOT_LOCKED            = "NOT_LOCKED";
     var LOCKED                = "LOCKED";
 
-    var CMD_LOAD_KNOWN_LOCKS      = "loadKnownLocks";
 
     //Variables
 
@@ -83,11 +82,11 @@ define(function (require, exports, module) {
                                                     progress: ProgressDialog.showProgress("Locking Element...", "Connecting to server...")
                                                 };
                                                 GitApi.push(options, function() {
-                                                    GitBase.setTeamworkProjectName(projectName);
-                                                    Toast.info("TeamworkProject created...");
+                                                    Toast.info("Element locked...");
                                                     Dialogs.cancelModalDialogIfOpen('modal');
                                                     workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
                                                     workingDir.moveToTrash();
+                                                    ModelExplorerView.rebuild();
                                                 });
                                             }, function (err) {
                                                 workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
@@ -186,6 +185,7 @@ define(function (require, exports, module) {
                 executeUpdateLockInfo(locks, projectName);
                 workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
                 workingDir.moveToTrash();
+                ModelExplorerView.rebuild();
             });
         });
     }
