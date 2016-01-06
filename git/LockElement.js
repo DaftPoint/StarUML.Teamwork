@@ -19,6 +19,7 @@ define(function (require, exports, module) {
     var GitConfiguration    = require("../git/GitConfiguration");
     var GitApi              = require("../htmlGit");
     var ProgressDialog      = require("../dialogs/ProgressDialog");
+    var TeamworkView        = require("../teamworkView/TeamworkView");
 
     //Constants
 
@@ -64,7 +65,7 @@ define(function (require, exports, module) {
                                         var value = {
                                             lockedBy: username,
                                             elementID: unescapedElementId,
-                                            lockingDate: new Date().toJSON().slice(0,10)
+                                            lockingDate: new Date().toJSON().slice(0,19).replace("T", " ")
                                         };
                                         file.write(JSON.stringify(value), function() {
                                             var options = {
@@ -86,6 +87,7 @@ define(function (require, exports, module) {
                                                     Dialogs.cancelModalDialogIfOpen('modal');
                                                     workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
                                                     workingDir.moveToTrash();
+                                                    TeamworkView.addTeamworkItem("Locking Element", "Locking Element " + value.elementID, value.lockingDate, value.lockedBy);
                                                     ModelExplorerView.rebuild();
                                                 });
                                             }, function (err) {
@@ -143,14 +145,16 @@ define(function (require, exports, module) {
                                                 remove: true,
                                                 username: GitConfiguration.getUsername(),
                                                 password: GitConfiguration.getPassword(),
-                                                progress: ProgressDialog.showProgress("Locking Element...", "Connecting to server...")
+                                                progress: ProgressDialog.showProgress("Unlocking Element...", "Connecting to server...")
                                             };
                                             GitApi.push(options, function() {
                                                 GitBase.setTeamworkProjectName(projectName);
-                                                Toast.info("TeamworkProject created...");
+                                                Toast.info("Element unlocked...");
                                                 Dialogs.cancelModalDialogIfOpen('modal');
                                                 workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
                                                 workingDir.moveToTrash();
+                                                TeamworkView.addTeamworkItem("Unlocking Element", "Unlocking Element " + element, new Date().toJSON().slice(0, 19).replace("T", " "), GitConfiguration.getUsername());
+                                                ModelExplorerView.rebuild();
                                             });
                                         },
                                         function (err) {
@@ -216,6 +220,7 @@ define(function (require, exports, module) {
                         }
                         Dialogs.cancelModalDialogIfOpen('modal');
                         Toast.info("Locked Element " + lockedElement._id + " ...");
+                        TeamworkView.addTeamworkItem("Updating Lock-Info", "Locking Element " + lockInfoFile.elementID, lockInfoFile.lockingDate, lockInfoFile.lockedBy);
                     });
                     },
                     function (err) {

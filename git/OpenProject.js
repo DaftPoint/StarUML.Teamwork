@@ -21,7 +21,7 @@ define(function (require, exports, module) {
     var LockElement        = require("git/LockElement");
     var GitApi             = require("../htmlGit");
     var ProgressDialog     = require("../dialogs/ProgressDialog");
-    var TeamworkView       = require("../locks_view/LockView");
+    var TeamworkView       = require("../teamworkView/TeamworkView");
 
     //Constants
     var NO_PROJECT_DATA_FOUND_MESSAGE           = "No Project-Data found!";

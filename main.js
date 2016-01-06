@@ -17,7 +17,7 @@ define(function (require, exports, module) {
     var Trigger                 = require("./Trigger");
     var Locking                 = require("./locking/ElementLocker");
     var ProjectCommitter        = require("./commit/ProjectCommitter");
-    var TeamworkView            = require("./locks_view/LockView");
+    var TeamworkView            = require("./teamworkView/TeamworkView");
 
     //# Define Commands
     var CMD_TEAMWORK         	= 'teamwork';

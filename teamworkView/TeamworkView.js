@@ -35,8 +35,8 @@ define(function (require, exports, module) {
         ModelExplorerView  = app.getModule("explorer/ModelExplorerView"),
         PreferenceManager  = app.getModule("core/PreferenceManager");
 
-    var teamworkPanelTemplate = require("text!locks_view/teamwork-panel.html"),
-        teamworkItemTemplate = require("text!locks_view/teamwork-item.html"),
+    var teamworkPanelTemplate = require("text!teamworkView/teamwork-panel.html"),
+        teamworkItemTemplate = require("text!teamworkView/teamwork-item.html"),
         teamworkPanel,
         listView,
         $teamworkPanel,
