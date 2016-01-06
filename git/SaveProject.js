@@ -44,10 +44,6 @@ define(function (require, exports, module) {
         throw "Not yet implemented";
     }
 
-    function uploadChanges() {
-        throw "Not yet implemented";
-    }
-
     function createNewProjectOnTeamworkServer(projectName) {
         var localPath = getProjectPath(projectName);
         var remoteURL = GitConfiguration.getRemoteURLWithoutUsernameAndPasswort();
