@@ -51,25 +51,12 @@ define(function (require, exports, module) {
 
     var isInitialized = false;
 
-    /**
-     * DataSource for ListView
-     * @type {kendo.data.DataSource}
-     */
     var dataSource = new kendo.data.DataSource();
 
-    /**
-     * Clear All Relationship Items
-     */
     function clearTeamworkItems() {
         dataSource.data([]);
     }
 
-    /**
-     * Add a Teamwork-Message Item
-     * @param {Relationship} rel
-     * @param {Model} elem
-     * @param {string} role
-     */
     function addTeamworkItem(event, message, time, user) {
         show();
         dataSource.add({
@@ -80,9 +67,6 @@ define(function (require, exports, module) {
         });
     }
 
-    /**
-     * Show Relationships Panel
-     */
     function show() {
         teamworkPanel.show();
         $button.addClass("selected");
@@ -90,9 +74,6 @@ define(function (require, exports, module) {
         PreferenceManager.set(PREFERENCE_KEY, true);
     }
 
-    /**
-     * Hide Relationships Panel
-     */
     function hide() {
         teamworkPanel.hide();
         $button.removeClass("selected");
@@ -100,9 +81,6 @@ define(function (require, exports, module) {
         PreferenceManager.set(PREFERENCE_KEY, false);
     }
 
-    /**
-     * Toggle Relationships Panel
-     */
     function toggle() {
         if (teamworkPanel.isVisible()) {
             hide();
@@ -111,25 +89,19 @@ define(function (require, exports, module) {
         }
     }
 
-    /**
-     * Initialize Extension
-     */
     function init() {
         if(!isInitialized) {
             isInitialized = true
         } else {
             return;
         }
-        // Load our stylesheet
         ExtensionUtils.loadStyleSheet(module, "styles.less");
 
-        // Toolbar Button
         $("#toolbar .buttons").append($button);
         $button.click(function () {
             CommandManager.execute(CMD_TEAMWORK_VIEW);
         });
 
-        // Setup RelationshipPanel
         $teamworkPanel = $(teamworkPanelTemplate);
         $title = $teamworkPanel.find(".title");
         $close = $teamworkPanel.find(".close");
@@ -138,7 +110,6 @@ define(function (require, exports, module) {
         });
         teamworkPanel = PanelManager.createBottomPanel("?", $teamworkPanel, 29);
 
-        // Setup Relationship List
         $listView = $teamworkPanel.find(".listview");
         $listView.kendoListView({
             dataSource: dataSource,
@@ -147,7 +118,6 @@ define(function (require, exports, module) {
         });
         listView = $listView.data("kendoListView");
 
-        // Register Commands
         CommandManager.register("Teamwork-Info", CMD_TEAMWORK_VIEW, toggle);
 
 
@@ -160,7 +130,6 @@ define(function (require, exports, module) {
         $clear.click(function() {
             clearTeamworkItems();
         });
-        //addTeamworkItem(rel, otherSide, role);
 
         // Load Preference
         var visible = PreferenceManager.get(PREFERENCE_KEY);
@@ -169,12 +138,9 @@ define(function (require, exports, module) {
         } else {
             hide();
         }
-
-        //_setupContextMenu();
     }
 
     // Initialize Extension
-    //init();
     exports.init = init;
     exports.addTeamworkItem = addTeamworkItem;
 });
