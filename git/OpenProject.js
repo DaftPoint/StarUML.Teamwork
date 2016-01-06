@@ -87,7 +87,7 @@ define(function (require, exports, module) {
                                 GitBase.setTeamworkProjectName(projectName);
                                 Dialogs.cancelModalDialogIfOpen('modal');
                                 Toast.info("Opening Project...");
-                                TeamworkView.addTeamworkItem("Loading Project", "Loaded Teamwork-project " + projectName, new Date().toJSON().slice(0,19).replace("T", " "), GitConfiguration.getUsername());
+                                TeamworkView.addOpenProjectEvent(projectName, GitConfiguration.getUsername());
                             },
                             function (err) {
                                 workingDir.moveToTrash();

@@ -18,6 +18,7 @@ define(function (require, exports, module) {
     var GitConfiguration    = require("./GitConfiguration");
     var GitApi              = require("../htmlGit");
     var ProgressDialog      = require("../dialogs/ProgressDialog");
+    var TeamworkView        = require("../teamworkView/TeamworkView");
 
     //Constants
     var NOT_CREATED           = "NOT_CREATED";
@@ -83,10 +84,10 @@ define(function (require, exports, module) {
                                                 };
                                                 GitApi.push(options, function() {
                                                     GitBase.setTeamworkProjectName(projectName);
-                                                    Toast.info("TeamworkProject created...");
                                                     Dialogs.cancelModalDialogIfOpen('modal');
                                                     workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
                                                     workingDir.moveToTrash();
+                                                    TeamworkView.addCreateProjectEvent(projectName, GitConfiguration.getUsername());
                                                 });
                                             }, function (err) {
                                                 workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);

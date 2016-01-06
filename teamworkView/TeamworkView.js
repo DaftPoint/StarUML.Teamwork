@@ -57,6 +57,14 @@ define(function (require, exports, module) {
         dataSource.data([]);
     }
 
+    var EVENTS = {
+        CREATE_PROJECT: "Project created",
+        LOCK_ELEMENT: "Element locked",
+        UNLOCK_ELEMENT: "Element unlocked",
+        OPEN_PROJECT: "Project loaded",
+        UPDATE_LOCK_INFO: "Updating Lock-Info"
+    }
+
     function addTeamworkItem(event, message, time, user) {
         show();
         dataSource.add({
@@ -65,6 +73,31 @@ define(function (require, exports, module) {
             event: event,
             message: message
         });
+    }
+
+    function addCreateProjectEvent(projectName, user) {
+        var message = "Teamwork-Project created: " + projectName;
+        addTeamworkItem(EVENTS.CREATE_PROJECT, message, new Date().toJSON().slice(0, 19).replace("T", " "), user);
+    }
+
+    function addElementLockedEvent(elementId, time, user) {
+        var message = "Element locked: " + elementId;
+        addTeamworkItem(EVENTS.LOCK_ELEMENT, message, time, user);
+    }
+
+    function addElementUnlockedEvent(elementId, user) {
+        var message = "Element unlocked: " + elementId;
+        addTeamworkItem(EVENTS.UNLOCK_ELEMENT, message, new Date().toJSON().slice(0, 19).replace("T", " "), user);
+    }
+
+    function addOpenProjectEvent(projectName, user) {
+        var message = "Loaded Project: " + projectName;
+        addTeamworkItem(EVENTS.OPEN_PROJECT, message, new Date().toJSON().slice(0, 19).replace("T", " "), user);
+    }
+
+    function addUpdateLockInfoEvent(elementID, time, user) {
+        var message = "Lock-Information updated for: " + elementID;
+        addTeamworkItem(EVENTS.UPDATE_LOCK_INFO, message, time, user);
     }
 
     function show() {
@@ -142,5 +175,10 @@ define(function (require, exports, module) {
 
     // Initialize Extension
     exports.init = init;
+    exports.addCreateProjectEvent = addCreateProjectEvent;
+    exports.addOpenProjectEvent = addOpenProjectEvent;
+    exports.addElementUnlockedEvent = addElementUnlockedEvent;
+    exports.addElementLockedEvent = addElementLockedEvent;
+    exports.addUpdateLockInfoEvent = addUpdateLockInfoEvent;
     exports.addTeamworkItem = addTeamworkItem;
 });

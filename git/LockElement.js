@@ -87,7 +87,7 @@ define(function (require, exports, module) {
                                                     Dialogs.cancelModalDialogIfOpen('modal');
                                                     workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
                                                     workingDir.moveToTrash();
-                                                    TeamworkView.addTeamworkItem("Locking Element", "Locking Element " + value.elementID, value.lockingDate, value.lockedBy);
+                                                    TeamworkView.addElementLockedEvent(value.elementID, value.lockingDate, value.lockedBy);
                                                     ModelExplorerView.rebuild();
                                                 });
                                             }, function (err) {
@@ -153,7 +153,7 @@ define(function (require, exports, module) {
                                                 Dialogs.cancelModalDialogIfOpen('modal');
                                                 workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
                                                 workingDir.moveToTrash();
-                                                TeamworkView.addTeamworkItem("Unlocking Element", "Unlocking Element " + element, new Date().toJSON().slice(0, 19).replace("T", " "), GitConfiguration.getUsername());
+                                                TeamworkView.addElementUnlockedEvent(element, GitConfiguration.getUsername());
                                                 ModelExplorerView.rebuild();
                                             });
                                         },
@@ -219,8 +219,7 @@ define(function (require, exports, module) {
                             lockedElement.lockElement(lockInfoFile.lockedBy);
                         }
                         Dialogs.cancelModalDialogIfOpen('modal');
-                        Toast.info("Locked Element " + lockedElement._id + " ...");
-                        TeamworkView.addTeamworkItem("Updating Lock-Info", "Locking Element " + lockInfoFile.elementID, lockInfoFile.lockingDate, lockInfoFile.lockedBy);
+                        TeamworkView.addUpdateLockInfoEvent(lockInfoFile.elementID, lockInfoFile.lockingDate, lockInfoFile.lockedBy);
                     });
                     },
                     function (err) {

@@ -10,6 +10,7 @@ define(function(require, exports, module) {
     //imported modules
     var OpenProject             = require("./git/OpenProject");
     var GitConfiguration        = require("./git/GitConfiguration");
+    var TeamworkView            = require("./teamworkView/TeamworkView");
 
     function updateTitlebar(projectName) {
         var filename = projectName,
@@ -50,7 +51,7 @@ define(function(require, exports, module) {
 
             if(operationName == MOVE_VIEWS) {
                 if(elements[0]._parent.isLocked() && elements[0]._parent.getLockUser() !== teamworkUser) {
-                    Toast.error(MESSAGE);
+                    TeamworkView.addTeamworkItem("Error", MESSAGE, new Date().toJSON().slice(0, 19).replace("T", " "), teamworkUser);
                     throw new Error(MESSAGE);
                 }
             }
@@ -62,14 +63,14 @@ define(function(require, exports, module) {
                 if(operation.ops[i].arg.op !== undefined) {
                     var oldParent = Repository.get(operation.ops[i].arg.op);
                     if(oldParent.isLocked() && oldParent.getLockUser() !== teamworkUser) {
-                        Toast.error(MESSAGE);
+                        TeamworkView.addTeamworkItem("Error", MESSAGE, new Date().toJSON().slice(0, 19).replace("T", " "), teamworkUser);
                         throw new Error(MESSAGE);
                     }
                 }
                 if(operation.ops[i].arg.np !== undefined) {
                     var newParent = Repository.get(operation.ops[i].arg.np);
                     if(newParent.isLocked() && newParent.getLockUser() !== teamworkUser) {
-                        Toast.error(MESSAGE);
+                        TeamworkView.addTeamworkItem("Error", MESSAGE, new Date().toJSON().slice(0, 19).replace("T", " "), teamworkUser);
                         throw new Error(MESSAGE);
                     }
                 }
@@ -77,7 +78,7 @@ define(function(require, exports, module) {
             for(var elementIndex = 0; elementIndex < elements.length; elementIndex++) {
                 var element = elements[elementIndex];
                 if(element.isLocked() && element.getLockUser() !== teamworkUser) {
-                    Toast.error(MESSAGE);
+                    TeamworkView.addTeamworkItem("Error", MESSAGE, new Date().toJSON().slice(0, 19).replace("T", " "), teamworkUser);
                     throw new Error(MESSAGE);
                 }
             }
