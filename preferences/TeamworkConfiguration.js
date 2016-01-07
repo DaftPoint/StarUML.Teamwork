@@ -28,52 +28,9 @@ define(function (require, exports, module) {
     }
 
     function buildRemoteURL() {
-        var username 		= getUsername();
-        var password 		= getPassword();
-        var remoteHost 		= getRemoteHost();
-        var remoteProtocol 	= getRemoteProtocol();
-        var remoteURL 		= remoteProtocol;
-        remoteURL = addUsernameAndPasswordToRemoteURLWhenGiven(remoteURL, username, password);
-        remoteURL = remoteURL + remoteHost;
-        return remoteURL;
-    }
-
-    function buildRemoteURLWithoutUsernameAndPassword() {
         var remoteHost 		= getRemoteHost();
         var remoteProtocol 	= getRemoteProtocol();
         return remoteProtocol + remoteHost;
-    }
-
-    function getUserName() {
-        return PreferenceManager.get(USERNAME_PREFERENCE);
-    }
-
-    function addUsernameAndPasswordToRemoteURLWhenGiven(remoteURL, username, password) {
-        if(isUsernameGiven(username)) {
-            remoteURL = remoteURL + username;
-            remoteURL = addPasswordToRemoteURLWhenGiven(remoteURL, password);
-            remoteURL = addAtSignToRemoteURL(remoteURL);
-        }
-        return remoteURL;
-    }
-
-    function addAtSignToRemoteURL(remoteURL) {
-        return remoteURL + "@";
-    }
-
-    function addPasswordToRemoteURLWhenGiven(remoteURL, password) {
-        if(isPasswordGiven(password)) {
-            remoteURL = remoteURL + ":" + password;
-        }
-        return remoteURL;
-    }
-
-    function isUsernameGiven(username) {
-        return username != "" && username != null;
-    }
-
-    function isPasswordGiven(password) {
-        return password != "" && password != null;
     }
 
     function getUsername() {
@@ -98,5 +55,4 @@ define(function (require, exports, module) {
     exports.getSelectedGitBackendModule = getSelectedGitBackendModule;
     exports.getUsername = getUsername;
     exports.getPassword = getPassword;
-    exports.getRemoteURLWithoutUsernameAndPasswort = buildRemoteURLWithoutUsernameAndPassword;
 });

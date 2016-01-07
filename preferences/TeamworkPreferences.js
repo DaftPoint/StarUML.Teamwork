@@ -39,17 +39,6 @@ define(function (require, exports, module) {
 	        description: "Password (if required) to access the git-Repository",
 	        type: "String",
 	        'default': ""
-	    },
-	    "teamwork.server.backend": {
-	        text: "Backend",
-	        description: "The GIT-NodeJS-Module which sould be used to enable StarUML to do some Teamwork-Stuff",
-	        type: "Dropdown",
-	        options: [
-	        	{value: 0, text: "Simple-GIT"},
-	        	{value: 1, text: "js-git"},
-	        	{value: 2, text: "Nodegit v0.1.3"}
-	        ],
-	        'default': 0
 	    }
 	};
 

@@ -8431,7 +8431,7 @@
                         progress({pct: 40, msg: 'Sending pack...'});
                         remote.removeRefs([remoteRef], function () {
                             config.remoteHeads = config.remoteHeads || {};
-                            config.remoteHeads[ref.name] = ref.head;
+                            config.remoteHeads[remoteRef.name] = remoteRef.head;
                             config.url = url;
                             store.setConfig(config, success);
                         }, remotePushProgress);

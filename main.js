@@ -11,12 +11,11 @@ define(function (require, exports, module) {
     var ExtensionUtils          = app.getModule("utils/ExtensionUtils");
 
     //Imported files
-    var TeamworkCommandHandler 	= require("./CommandHandler");
-    var GitController           = require("./git/GitController");
-    var LockingAttributesElement= require("./LockingAttributesElement");
-    var Trigger                 = require("./Trigger");
+    var TeamworkCommandHandler 	= require("./commandHandler/CommandHandler");
+    var LockingAttributesElement= require("./locking/LockingAttributesElement");
+    var Trigger                 = require("./trigger/Trigger");
     var Locking                 = require("./locking/ElementLocker");
-    var ProjectCommitter        = require("./commit/ProjectCommitter");
+    var ProjectCommitter        = require("./teamworkApi/ProjectCommitter");
     var TeamworkView            = require("./teamworkView/TeamworkView");
 
     //# Define Commands
@@ -34,10 +33,10 @@ define(function (require, exports, module) {
 
     //# register commands
     CommandManager.register("Teamwork",             		CMD_TEAMWORK,           CommandManager.doNothing);
-    CommandManager.register("Open Teamwork-Project...",     CMD_TEAMWORK_OPEN,      GitController.openProject);
-    CommandManager.register("Create Teamwork-Project", 	    CMD_TEAMWORK_CREATE,  	GitController.saveProject);
-    CommandManager.register("Lock Teamwork-Project", 	    CMD_TEAMWORK_LOCK,  	GitController.lockWholeProject);
-    CommandManager.register("Update Lock-Info", 	        CMD_UPDATE_LOCKS,  	    GitController.updateProjectLockInfo);
+    CommandManager.register("Open Teamwork-Project...",     CMD_TEAMWORK_OPEN,      TeamworkCommandHandler.openProject);
+    CommandManager.register("Create Teamwork-Project", 	    CMD_TEAMWORK_CREATE,  	TeamworkCommandHandler.saveProject);
+    CommandManager.register("Lock Teamwork-Project", 	    CMD_TEAMWORK_LOCK,  	TeamworkCommandHandler.lockWholeProject);
+    CommandManager.register("Update Lock-Info", 	        CMD_UPDATE_LOCKS,  	    TeamworkCommandHandler.updateProjectLockInfo);
     CommandManager.register("Commit changes",  			    CMD_TEAMWORK_COMMIT,   	ProjectCommitter.commitProjectChanges);
     CommandManager.register("Update Project",     		    CMD_TEAMWORK_UPDATE, 	CommandManager.doNothing);
     CommandManager.register("Configure Teamwork-Server",    CMD_TEAMWORK_CONFIGURE, TeamworkCommandHandler.handleConfigure);

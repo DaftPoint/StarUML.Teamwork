@@ -1,9 +1,0 @@
-{
-  "name": "Teamwork-Server-Extension",
-  "description": "StarUML Extension",
-  "version": "0.1.0",
-  "icons" : {
-    "128": "stews.png"
-  },
-  "permissions" : ["http://*/", "https://*/","storage", "fileSystem", "fileSystem.write", "unlimitedStorage"]
-}

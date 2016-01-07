@@ -62,8 +62,9 @@ define(function (require, exports, module) {
         LOCK_ELEMENT: "Element locked",
         UNLOCK_ELEMENT: "Element unlocked",
         OPEN_PROJECT: "Project loaded",
-        UPDATE_LOCK_INFO: "Updating Lock-Info"
-    }
+        UPDATE_LOCK_INFO: "Updating Lock-Info",
+        COMMIT_PROJECT: "Project committed"
+    };
 
     function addTeamworkItem(event, message, time, user) {
         show();
@@ -100,6 +101,11 @@ define(function (require, exports, module) {
         addTeamworkItem(EVENTS.UPDATE_LOCK_INFO, message, time, user);
     }
 
+    function addProjectCommitEvent(projectName, user) {
+        var message = "Project changes committed: " + projectName;
+        addTeamworkItem(EVENTS.COMMIT_PROJECT, message, new Date().toJSON().slice(0, 19).replace("T", " "), user);
+    }
+
     function show() {
         teamworkPanel.show();
         $button.addClass("selected");
@@ -128,7 +134,7 @@ define(function (require, exports, module) {
         } else {
             return;
         }
-        ExtensionUtils.loadStyleSheet(module, "styles.less");
+        ExtensionUtils.loadStyleSheet(module, "teamworkView.less");
 
         $("#toolbar .buttons").append($button);
         $button.click(function () {
@@ -181,4 +187,5 @@ define(function (require, exports, module) {
     exports.addElementLockedEvent = addElementLockedEvent;
     exports.addUpdateLockInfoEvent = addUpdateLockInfoEvent;
     exports.addTeamworkItem = addTeamworkItem;
+    exports.addProjectCommitEvent = addProjectCommitEvent;
 });

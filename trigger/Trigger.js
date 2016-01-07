@@ -8,9 +8,9 @@ define(function(require, exports, module) {
     var Toast 				    = app.getModule("ui/Toast");
 
     //imported modules
-    var OpenProject             = require("./git/OpenProject");
-    var GitConfiguration        = require("./git/GitConfiguration");
-    var TeamworkView            = require("./teamworkView/TeamworkView");
+    var OpenProject             = require("./../teamworkApi/OpenProject");
+    var GitConfiguration        = require("./../preferences/TeamworkConfiguration");
+    var TeamworkView            = require("./../teamworkView/TeamworkView");
 
     function updateTitlebar(projectName) {
         var filename = projectName,

@@ -2,16 +2,21 @@ define(function(require, exports, module) {
     "use strict";
 
     //Module
-    var StatusBar        = app.getModule("ui/StatusBar");
-    var Toast            = app.getModule("ui/Toast");
-    var SelectionManager = app.getModule("engine/SelectionManager");
-    var PreferenceManager = app.getModule("core/PreferenceManager");
+    var StatusBar           = app.getModule("ui/StatusBar");
+    var Toast               = app.getModule("ui/Toast");
+    var SelectionManager    = app.getModule("engine/SelectionManager");
+    var PreferenceManager   = app.getModule("core/PreferenceManager");
+    var ModelExplorerView   = app.getModule("explorer/ModelExplorerView");
 
     //Imports
-    var Locking          = require("../git/LockElement");
+    var Locking          = require("../teamworkApi/LockElement");
+    var TeamworkView     = require("../teamworkView/TeamworkView");
 
     //Constants
     var USERNAME_PREFERENCE = "teamwork.server.username";
+
+    //Globals/Statics
+    var lockedElements = [];
 
     function lockElement() {
         var models = SelectionManager.getSelectedModels();
@@ -19,12 +24,15 @@ define(function(require, exports, module) {
         if (models.length > 0) {
             models.forEach(function(element, index, array) {
                 if(element.isLocked()) {
-                    console.log("Element '" + element._id + "' already locked");//TODO: Show all fails in own Dialog
+                    var message = "Element '" + element._id + "' already locked";
+                    TeamworkView.addTeamworkItem("Error", message, new Date().toJSON().slice(0, 19).replace("T", " "));
                 } else {
                     var username = PreferenceManager.get(USERNAME_PREFERENCE);
                     element.lockElement(username);
+                    ModelExplorerView.update(element);
                     var elementId = element._id.replace(/[^a-z0-9]/gi, '_');
                     elementsToLock.push({elementID: element._id, escapedID: elementId});
+                    lockedElements[element._id] = element;
                 }
             });
             Locking.lockGivenElements(elementsToLock);
@@ -38,16 +46,21 @@ define(function(require, exports, module) {
         var elementsToUnlock = [];
         if (models.length > 0) {
             models.forEach(function(element, index, array) {
+                var message;
                 if(!element.isLocked()) {
-                    console.log("Element '" + element._id + "' is not locked");//TODO: Show all fails in own Dialog
+                    message = "Element '" + element._id + "' is not locked";
+                    TeamworkView.addTeamworkItem("Error", message, new Date().toJSON().slice(0, 19).replace("T", " "));
                 } else {
                     var username = PreferenceManager.get(USERNAME_PREFERENCE);
                     if(element.lockedBy === username) {
                         element.unlockElement();
+                        ModelExplorerView.update(element);
                         var elementId = element._id.replace(/[^a-z0-9]/gi, '_');
                         elementsToUnlock.push(elementId);
+                        delete lockedElements[element._id];
                     } else {
-                        console.log("Element '" + element._id + "' cannot be unlocked. You do not own the lock");//TODO: Show all fails in own Dialog
+                        message = "Element '" + element._id + "' cannot be unlocked. You do not own the lock";
+                        TeamworkView.addTeamworkItem("Error", message, new Date().toJSON().slice(0, 19).replace("T", " "));
                     }
                 }
             });
@@ -57,6 +70,11 @@ define(function(require, exports, module) {
         }
     }
 
+    function getLockedElements() {
+        return lockedElements;
+    }
+
     exports.lockElement   = lockElement;
     exports.unlockElement = unlockElement;
+    exports.getLockedElement = getLockedElements;
 });
