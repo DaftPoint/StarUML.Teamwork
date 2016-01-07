@@ -6,11 +6,11 @@ define(function(require, exports, module) {
     var Dialogs             = app.getModule('dialogs/Dialogs');
     var Toast 				= app.getModule("ui/Toast");
     var FileSystem          = app.getModule("filesystem/FileSystem");
+    var Repository      	= app.getModule("core/Repository");
 
     //Imports
     var TeamworkBase        = require("./TeamworkBase");
     var GitConfiguration    = require("../preferences/TeamworkConfiguration");
-    var GitApi              = require("../htmlGit");
     var ProgressDialog      = require("../dialogs/ProgressDialog");
     var TeamworkView        = require("../teamworkView/TeamworkView");
 
@@ -22,7 +22,7 @@ define(function(require, exports, module) {
         var workingDirPromise = getProjectWorkDir(projectName);
         var currentProjectPromise = loadCurrentProjectFromServer(workingDirPromise, projectName);
         var commitMsg = 'Committing Project-Changes for "' + projectName + '"';
-        var mergePromise = TeamworkBase.mergeProjectWithLocalChanges(currentProjectPromise, projectName, commitMsg);
+        var mergePromise = TeamworkBase.mergeProjectWithLocalChanges(currentProjectPromise, commitMsg, true);
         var pushPromise = TeamworkBase.pushToServer(mergePromise, "Committing Project-Changes...");
         notifyUserAndCleanAfterwards(pushPromise, projectName);
     }
@@ -55,6 +55,7 @@ define(function(require, exports, module) {
             Dialogs.cancelModalDialogIfOpen('modal');
             workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
             workingDir.unlink();
+            Repository.setModified(false);
         });
     }
 

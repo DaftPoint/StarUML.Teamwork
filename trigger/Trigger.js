@@ -2,15 +2,18 @@ define(function(require, exports, module) {
     "use strict";
 
     //modules
+    var _global                 = app.getModule("core/Global").global;
     var Repository              = app.getModule("core/Repository");
     var ProjectManager          = app.getModule("engine/ProjectManager");
     var OperationBuilder        = app.getModule("core/OperationBuilder");
     var Toast 				    = app.getModule("ui/Toast");
+    var Core                    = app.getModule("core/Core");
 
     //imported modules
     var OpenProject             = require("./../teamworkApi/OpenProject");
     var GitConfiguration        = require("./../preferences/TeamworkConfiguration");
     var TeamworkView            = require("./../teamworkView/TeamworkView");
+    var TeamworkBase            = require("./../teamworkApi/TeamworkBase");
 
     function updateTitlebar(projectName) {
         var filename = projectName,
@@ -55,10 +58,26 @@ define(function(require, exports, module) {
                     throw new Error(MESSAGE);
                 }
             }
-
+            var reader;
             for (var i = 0, len = operation.ops.length; i < len; i++) {
-                if (operation.ops[i] === OperationBuilder.OP_INSERT || operation.ops[i] === OperationBuilder.OP_REMOVE) {
-
+                if (operation.ops[i].op === OperationBuilder.OP_INSERT) {
+                    reader = new Core.Reader({ data: operation.ops[i].arg }, _global.type);
+                    var elementToCreate  = reader.readObj("data");
+                    var parentOfCreation = Repository.get(elementToCreate._parent.$ref);
+                    if((parentOfCreation && !parentOfCreation.isNewElement() && !parentOfCreation.isLocked()) || (parentOfCreation && parentOfCreation.isLocked() &&  parentOfCreation.getLockUser() !== teamworkUser)) {
+                        TeamworkView.addTeamworkItem("Error", MESSAGE, new Date().toJSON().slice(0, 19).replace("T", " "), teamworkUser);
+                        throw new Error(MESSAGE);
+                    }
+                    elementToCreate.newElement = true;
+                }
+                if (operation.ops[i].op === OperationBuilder.OP_REMOVE) {
+                    reader = new Core.Reader({ data: operation.ops[i].arg }, _global.type);
+                    var elementToDelete  = reader.readObj("data");
+                    var parentOfDeletion = Repository.get(elementToDelete._parent.$ref);
+                    if((parentOfDeletion && !parentOfDeletion.isNewElement() && !parentOfDeletion.isLocked()) || (parentOfDeletion && parentOfDeletion.isLocked() &&  parentOfDeletion.getLockUser() !== teamworkUser)) {
+                        TeamworkView.addTeamworkItem("Error", MESSAGE, new Date().toJSON().slice(0, 19).replace("T", " "), teamworkUser);
+                        throw new Error(MESSAGE);
+                    }
                 }
                 if(operation.ops[i].arg.op !== undefined) {
                     var oldParent = Repository.get(operation.ops[i].arg.op);
@@ -82,6 +101,11 @@ define(function(require, exports, module) {
                     throw new Error(MESSAGE);
                 }
             }
+        });
+
+        $(Repository).on('operationExecuted', function(event, operation) {
+            var changedElements = Repository.extractChanged(operation);
+            TeamworkBase.addChangedElements(changedElements);
         });
     }
 

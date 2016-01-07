@@ -45,7 +45,7 @@ define(function (require, exports, module) {
         var workingDirPromise = TeamworkBase.prepareWorkingDirectory(valueToResolve, localPath, refContent);
         var branchPromise = TeamworkBase.createAndCheckoutBranch(workingDirPromise);
         var commitMsg = 'Creating Project: ' + projectName;
-        var mergePromise = TeamworkBase.mergeProjectWithLocalChanges(branchPromise, projectName, commitMsg);
+        var mergePromise = TeamworkBase.mergeProjectWithLocalChanges(branchPromise, commitMsg, false);
         var progressTitle = "Creating Teamwork-Project...";
         var pushPromise = TeamworkBase.pushToServer(mergePromise, progressTitle);
         notifyUserOfSuccessfulProjectCreation(pushPromise, projectName);

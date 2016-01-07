@@ -39,8 +39,9 @@ define(function (require, exports, module) {
             var unescapedElementId = element.elementID;
             var elementWorkingPath = workingPath + "/locking/" + projectName + "/" + elementID;
             var refContent = 'refs/heads/locks/' + projectName + '/' + elementID;
-            var prepareWorkingDirPromise = TeamworkBase.prepareWorkingDirectory(elementID, elementWorkingPath, refContent);
-            var branchPromise = createAndGetLockingBranch(prepareWorkingDirPromise, projectName);
+            var valueToResolve = 'locks/' + projectName + '/' + elementID;
+            var prepareWorkingDirPromise = TeamworkBase.prepareWorkingDirectory(valueToResolve, elementWorkingPath, refContent);
+            var branchPromise = TeamworkBase.createAndCheckoutBranch(prepareWorkingDirPromise);
             var lockInfoPromise = createAndAddLockingInformation(branchPromise, elementWorkingPath, unescapedElementId);
             var pushPromise = pushLockingInformationToServer(lockInfoPromise);
             rebuildWorkspaceAndProjectInfo(pushPromise);

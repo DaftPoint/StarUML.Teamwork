@@ -66,6 +66,7 @@ define(function (require, exports, module) {
         var nextPromise = $.Deferred();
         promise.done(function (buttonId, projectName) {
             if (buttonId === Dialogs.DIALOG_BTN_OK) {
+                TeamworkBase.clearChangedIds();
                 var clonePromise  = TeamworkBase.cloneRepoFromServer(workingDir, projectName);
                 clonePromise.done(function(projectName, workingDir) {
                     nextPromise.resolve(projectName, workingDir);

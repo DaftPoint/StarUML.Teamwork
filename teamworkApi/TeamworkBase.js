@@ -23,12 +23,14 @@ define(function (require, exports, module) {
     var TeamworkConfiguration   = require("../preferences/TeamworkConfiguration");
     var GitApi                  = require("../htmlGit");
     var ProgressDialog          = require("../dialogs/ProgressDialog");
+    var TeamworkView            = require("../teamworkView/TeamworkView");
 
     //Constants
     var PREFERENCE_LOCAL_PATH = "teamwork.server.local";
 
     //Variables
     var _teamworkProjectName = null;
+    var _changedElementIDs   = {};
 
     //Functions
 
@@ -111,10 +113,14 @@ define(function (require, exports, module) {
         return promise;
     }
 
-    function mergeProjectWithLocalChanges(promise, commitMsg) {
+    function mergeProjectWithLocalChanges(promise, commitMsg, onlyChangedElements) {
         var nextPromise = new $.Deferred();
         promise.done(function(projectName, workingDir) {
-            splitProjectInSingleFiles(false, projectName);
+            try {
+                splitProjectInSingleFiles(false, projectName, onlyChangedElements);
+            } catch(error) {
+                nextPromise.reject();
+            }
             var options = {
                 dir: workingDir,
                 name: TeamworkConfiguration.getUsername(),
@@ -137,15 +143,29 @@ define(function (require, exports, module) {
         return localPath + "/" + projectName + "/";
     }
 
-    function splitProjectInSingleFiles(recreateExistingDirectory, projectName) {
+    function splitProjectInSingleFiles(recreateExistingDirectory, projectName, onlyChangedElements) {
         var idMap = Repository.getIdMap();
+        var changedIds;
+        if(onlyChangedElements) {
+            changedIds = getChangedElementIDs();
+            if(Object.keys(changedIds).length === 0) {
+                TeamworkView.addTeamworkItem("Error", "No changes to commit", new Date().toJSON().slice(0, 19).replace("T", " "), TeamworkConfiguration.getUsername());
+                throw new Error("No changes to commit");
+            }
+        }
         var fragmentDirectory = getProjectPath(projectName);
         var directory = FileSystem.getDirectoryForPath(fragmentDirectory);
         if(recreateExistingDirectory) {
             directory.unlink();
             directory.create();
         }
-        for (var key in idMap) {
+        var iteratorMap;
+        if(onlyChangedElements) {
+            iteratorMap = changedIds;
+        } else {
+            iteratorMap = idMap;
+        }
+        for (var key in iteratorMap) {
             var element = idMap[key];
             var tempOwnedElements = element.ownedElements;
             var tempOwnedViews = element.ownedViews;
@@ -202,11 +222,11 @@ define(function (require, exports, module) {
                     branch: branchName
                 };
                 GitApi.checkout(options, function () {
-                        nextPromise.resolve(workingDir);
-                    },
-                    function (error) {
-                        handleGitApiError(workingDir, error)
-                    });
+                    nextPromise.resolve(workingDir);
+                },
+                function (error) {
+                    handleGitApiError(workingDir, error)
+                });
             });
         });
         return nextPromise;
@@ -226,6 +246,27 @@ define(function (require, exports, module) {
         return nextPromise;
     }
 
+    function addChangedElementIDs(changedElements) {
+        for(var i = 0; i < changedElements.length; i++) {
+            var element = changedElements[i];
+            if (element && !_.contains(_changedElementIDs, element._id)) {
+                _changedElementIDs[element._id] = element._id;
+            }
+        }
+    }
+
+    function removeChangedElementIdsAfterUndoOperation() {
+        throw new Error("Not implemented yet");
+    }
+
+    function getChangedElementIDs() {
+        return _changedElementIDs;
+    }
+
+    function clearChangedIds() {
+        _changedElementIDs = {};
+    }
+
     //Backend
     exports.getTeamworkProjectName = getTeamworkProjectName;
     exports.setTeamworkProjectName = setTeamworkProjectName;
@@ -242,4 +283,7 @@ define(function (require, exports, module) {
     exports.createAndCheckoutBranch = createAndCheckoutBranch;
     exports.getProjectPath = getProjectPath;
     exports.cloneRepoFromServer = cloneProjectFromServer;
+    exports.addChangedElements = addChangedElementIDs;
+    exports.clearChangedIds = clearChangedIds;
+    exports.removeChangedElementIdsAfterUndoOperation = removeChangedElementIdsAfterUndoOperation;
 });

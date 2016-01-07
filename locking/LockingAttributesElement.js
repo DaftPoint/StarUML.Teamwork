@@ -24,6 +24,12 @@ define(function (require, exports, module) {
         type.Element.prototype.getBaseNodeText = type.Element.prototype.getNodeText;
         type.Element.prototype.getNodeText = getNodeTextWithLock;
         type.Element.prototype.isLocked = isLocked;
+        type.Element.prototype.newElement = false;
+        type.Element.prototype.isNewElement = isNewElement;
+    }
+
+    function isNewElement() {
+        return this.newElement;
     }
 
     function isLocked() {
