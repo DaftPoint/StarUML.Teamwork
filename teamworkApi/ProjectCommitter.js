@@ -42,8 +42,8 @@ define(function(require, exports, module) {
         var nextPromise = new $.Deferred();
         promise.done(function(workingDir) {
             var clonePromise  = TeamworkBase.cloneRepoFromServer(workingDir, projectName);
-            clonePromise.done(function(projectName, workingDir) {
-                nextPromise.resolve(projectName, workingDir);
+            clonePromise.done(function(workingDir, projectName) {
+                nextPromise.resolve(workingDir, projectName);
             });
         });
         return nextPromise;

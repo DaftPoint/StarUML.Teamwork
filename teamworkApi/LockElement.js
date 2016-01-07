@@ -41,7 +41,7 @@ define(function (require, exports, module) {
             var refContent = 'refs/heads/locks/' + projectName + '/' + elementID;
             var valueToResolve = 'locks/' + projectName + '/' + elementID;
             var prepareWorkingDirPromise = TeamworkBase.prepareWorkingDirectory(valueToResolve, elementWorkingPath, refContent);
-            var branchPromise = TeamworkBase.createAndCheckoutBranch(prepareWorkingDirPromise);
+            var branchPromise = TeamworkBase.createAndCheckoutBranch(prepareWorkingDirPromise, projectName);
             var lockInfoPromise = createAndAddLockingInformation(branchPromise, elementWorkingPath, unescapedElementId);
             var pushPromise = pushLockingInformationToServer(lockInfoPromise);
             rebuildWorkspaceAndProjectInfo(pushPromise);
@@ -57,7 +57,7 @@ define(function (require, exports, module) {
             var refContent = 'refs/heads/locks/' + projectName + '/' + branchName;
             var valueToResolve = 'locks/' + projectName + '/' + branchName;
             var prepareWorkingDirPromise = TeamworkBase.prepareWorkingDirectory(valueToResolve, elementWorkingPath, refContent);
-            var branchPromise = TeamworkBase.createAndCheckoutBranch(prepareWorkingDirPromise);
+            var branchPromise = TeamworkBase.createAndCheckoutBranch(prepareWorkingDirPromise, projectName);
             removeLockLocallyAndFromServer(branchPromise, element);
         });
     }

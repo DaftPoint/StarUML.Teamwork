@@ -55,8 +55,8 @@ define(function (require, exports, module) {
             var options = buildProjectSelectionList(projectRefs);
             var selectionPromise = Dialogs.showSelectDropdownDialog(CONFIRM_MESSAGE_LOADING_PROJECT, options);
             var clonePromise = cloneSelectedProject(selectionPromise, workingDir);
-            clonePromise.done(function(projectName, workingDir) {
-                nextPromise.resolve(projectName, workingDir);
+            clonePromise.done(function(workingDir, projectName) {
+                nextPromise.resolve(workingDir, projectName);
             });
         });
         return nextPromise;
@@ -68,8 +68,8 @@ define(function (require, exports, module) {
             if (buttonId === Dialogs.DIALOG_BTN_OK) {
                 TeamworkBase.clearChangedIds();
                 var clonePromise  = TeamworkBase.cloneRepoFromServer(workingDir, projectName);
-                clonePromise.done(function(projectName, workingDir) {
-                    nextPromise.resolve(projectName, workingDir);
+                clonePromise.done(function(workingDir, projectName) {
+                    nextPromise.resolve(workingDir, projectName);
                 });
             } else {
                 Toast.error(PROJECT_LOADING_CANCELLATION_MESSAGE);
@@ -79,7 +79,7 @@ define(function (require, exports, module) {
     }
 
     function openClonedProject(promise) {
-        promise.done(function(projectName, workingDir) {
+        promise.done(function(workingDir, projectName) {
             loadProjectFromFragments("Project", workingDir);
             TeamworkBase.setTeamworkProjectName(projectName);
             Dialogs.cancelModalDialogIfOpen('modal');

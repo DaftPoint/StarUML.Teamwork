@@ -115,7 +115,7 @@ define(function (require, exports, module) {
 
     function mergeProjectWithLocalChanges(promise, commitMsg, onlyChangedElements) {
         var nextPromise = new $.Deferred();
-        promise.done(function(projectName, workingDir) {
+        promise.done(function(workingDir, projectName) {
             try {
                 splitProjectInSingleFiles(false, projectName, onlyChangedElements);
             } catch(error) {
@@ -209,7 +209,7 @@ define(function (require, exports, module) {
         return nextPromise;
     }
 
-    function createAndCheckoutBranch(promise) {
+    function createAndCheckoutBranch(promise, projectName) {
         var nextPromise = $.Deferred();
         promise.done(function(workingDir, branchName) {
             var options = {
@@ -222,7 +222,7 @@ define(function (require, exports, module) {
                     branch: branchName
                 };
                 GitApi.checkout(options, function () {
-                    nextPromise.resolve(workingDir);
+                    nextPromise.resolve(workingDir, projectName);
                 },
                 function (error) {
                     handleGitApiError(workingDir, error)
@@ -238,7 +238,7 @@ define(function (require, exports, module) {
         var progressCallback = ProgressDialog.showProgress("Loading Teamwork-Project...", "Connecting to server...");
         var options = getDefaultGitOptions(workingDir, branchName, progressCallback);
         GitApi.clone(options, function () {
-            nextPromise.resolve(projectName, workingDir);
+            nextPromise.resolve(workingDir, projectName);
         },
         function (err) {
             handleGitApiError(workingDir, err);

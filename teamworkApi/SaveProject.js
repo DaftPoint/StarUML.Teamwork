@@ -43,7 +43,7 @@ define(function (require, exports, module) {
         var refContent = 'refs/heads/projects/' + projectName;
         var valueToResolve = 'projects/' + projectName;
         var workingDirPromise = TeamworkBase.prepareWorkingDirectory(valueToResolve, localPath, refContent);
-        var branchPromise = TeamworkBase.createAndCheckoutBranch(workingDirPromise);
+        var branchPromise = TeamworkBase.createAndCheckoutBranch(workingDirPromise, projectName);
         var commitMsg = 'Creating Project: ' + projectName;
         var mergePromise = TeamworkBase.mergeProjectWithLocalChanges(branchPromise, commitMsg, false);
         var progressTitle = "Creating Teamwork-Project...";
