@@ -27,7 +27,6 @@ define(function (require, exports, module) {
         dlg.done(function (buttonId, projectName) {
             if (buttonId === Dialogs.DIALOG_BTN_OK) {
                 createNewProjectOnTeamworkServer(projectName);
-                Repository.setModified(false);
             } else {
                 Toast.error("Creating Teamwork-Project cancelled");
             }
@@ -58,6 +57,7 @@ define(function (require, exports, module) {
             workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
             workingDir.unlink();
             TeamworkView.addCreateProjectEvent(projectName, GitConfiguration.getUsername());
+            $(exports).triggerHandler('projectCreated', [projectName]);
         });
     }
 

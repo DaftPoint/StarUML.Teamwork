@@ -55,7 +55,7 @@ define(function(require, exports, module) {
             Dialogs.cancelModalDialogIfOpen('modal');
             workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
             workingDir.unlink();
-            Repository.setModified(false);
+            $(exports).triggerHandler('projectCommitted', [projectName]);
         });
     }
 

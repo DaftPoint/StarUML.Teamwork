@@ -29,7 +29,7 @@ define(function (require, exports, module) {
 
     //Functions
     function openTeamworkProject() {
-        var nextPromise = $.Deferred();
+        var nextPromise = new $.Deferred();
         var localWorkingDir = TeamworkBase.loadLocalWorkingPath("Project");
         TeamworkBase.getProjectsRootDir(localWorkingDir, function (workingDir) {
             nextPromise.resolve(workingDir);
@@ -38,7 +38,7 @@ define(function (require, exports, module) {
     }
 
     function loadKnownProjectRefs(promise) {
-        var nextPromise = $.Deferred();
+        var nextPromise = new $.Deferred();
         promise.done(function(workingDir) {
             var options = TeamworkBase.getDefaultGitOptions(workingDir);
             GitApi.getProjectRefs(options, function (projectRefs) {
@@ -63,7 +63,7 @@ define(function (require, exports, module) {
     }
 
     function cloneSelectedProject(promise, workingDir) {
-        var nextPromise = $.Deferred();
+        var nextPromise = new $.Deferred();
         promise.done(function (buttonId, projectName) {
             if (buttonId === Dialogs.DIALOG_BTN_OK) {
                 TeamworkBase.clearChangedIds();
@@ -80,11 +80,13 @@ define(function (require, exports, module) {
 
     function openClonedProject(promise) {
         promise.done(function(workingDir, projectName) {
-            loadProjectFromFragments("Project", workingDir);
-            TeamworkBase.setTeamworkProjectName(projectName);
-            Dialogs.cancelModalDialogIfOpen('modal');
-            Toast.info("Opening Project...");
-            TeamworkView.addOpenProjectEvent(projectName, TeamworkConfiguration.getUsername());
+            var promise = loadProjectFromFragments("Project", workingDir);
+            promise.done(function() {
+                Dialogs.cancelModalDialogIfOpen('modal');
+                Toast.info("Opening Project...");
+                TeamworkView.addOpenProjectEvent(projectName, TeamworkConfiguration.getUsername());
+                $(exports).triggerHandler('teamworkProjectLoaded', [projectName]);
+            });
         });
     }
 
@@ -98,11 +100,10 @@ define(function (require, exports, module) {
 
     function openProjectFromJsonData(_project) {
         ProjectManager.loadFromJson(_project);
-        Repository.setModified(false);
-        $(exports).triggerHandler('teamworkProjectLoaded', [TeamworkBase.getTeamworkProjectName()]);
     }
 
     function loadProjectFromFragments(projectName, workingDir) {
+        var promise = new $.Deferred();
         TeamworkBase.cleanCurrentWork();
         var directory = TeamworkBase.loadLocalWorkingDirectory(projectName);
         directory.getContents(function (err, content, stats) {
@@ -124,9 +125,11 @@ define(function (require, exports, module) {
                 GitApi.getProjectLockRefs(options, function(locks) {
                     LockElement.updateProjectLockInfo(locks);
                     directory.unlink();
+                    promise.resolve();
                 });
             });
         });
+        return promise;
     }
 
     //Backend

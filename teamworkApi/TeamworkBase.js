@@ -30,6 +30,7 @@ define(function (require, exports, module) {
 
     //Variables
     var _teamworkProjectName = null;
+    var _isTeamworkProject = false;
     var _changedElementIDs   = {};
 
     //Functions
@@ -267,6 +268,14 @@ define(function (require, exports, module) {
         _changedElementIDs = {};
     }
 
+    function isTeamworkProject() {
+        return _isTeamworkProject;
+    }
+
+    function setTeamworkProject(isTeamworkProject) {
+        _isTeamworkProject = isTeamworkProject;
+    }
+
     //Backend
     exports.getTeamworkProjectName = getTeamworkProjectName;
     exports.setTeamworkProjectName = setTeamworkProjectName;
@@ -286,4 +295,6 @@ define(function (require, exports, module) {
     exports.addChangedElements = addChangedElementIDs;
     exports.clearChangedIds = clearChangedIds;
     exports.removeChangedElementIdsAfterUndoOperation = removeChangedElementIdsAfterUndoOperation;
+    exports.isTeamworkProject = isTeamworkProject;
+    exports.setTeamworkProject = setTeamworkProject;
 });
