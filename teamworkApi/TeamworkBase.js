@@ -21,7 +21,7 @@ define(function (require, exports, module) {
     var PlatformFileSystem      = require("../file/PlatformFileSystem").PlatformFileSystem;
     var DefaultDialog           = require("../dialogs/DefaultDialogs");
     var TeamworkConfiguration   = require("../preferences/TeamworkConfiguration");
-    var GitApi                  = require("../htmlGit");
+    var GitApi                  = require("../StarGit/api-built");
     var ProgressDialog          = require("../dialogs/ProgressDialog");
     var TeamworkView            = require("../teamworkView/TeamworkView");
 

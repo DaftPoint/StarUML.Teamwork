@@ -17,7 +17,7 @@ define(function (require, exports, module) {
     //Imports
     var TeamworkBase        = require("./TeamworkBase");
     var GitConfiguration    = require("../preferences/TeamworkConfiguration");
-    var GitApi              = require("../htmlGit");
+    var GitApi              = require("../StarGit/api-built");
     var ProgressDialog      = require("../dialogs/ProgressDialog");
     var TeamworkView        = require("../teamworkView/TeamworkView");
 

@@ -1,11 +1,16 @@
-var window = self;
 (function (root, factory) {
-    
-    var apiWorker = factory();
-    apiWorker();
-    
-}(this, function () {
-/**
+    if (typeof define === 'function' && define.amd) {
+        //Allow using this built library as an AMD module
+        //in another project. That other project will only
+        //see this AMD call, not the internal modules in
+        //the closure below.
+        define(factory);
+    } else {
+        //Browser globals case. Just assign the
+        //result to a property on the global.
+        root.GitApi = factory();
+    }
+}(this, function () {/**
  * almond 0.2.5 Copyright (c) 2011-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/jrburke/almond for details
@@ -414,7 +419,7 @@ var requirejs, require, define;
 define("thirdparty/almond", function(){});
 
 /** @license zlib.js 2012 - imaya [ https://github.com/imaya/zlib.js ] The MIT License */
-(function() {var COMPILED = !0, goog = goog || {};
+(function() {'use strict';var COMPILED = !0, goog = goog || {};
 goog.global = this;
 goog.DEBUG = !1;
 goog.LOCALE = "en";
@@ -2864,7 +2869,7 @@ Zlib.CompressionMethod = {DEFLATE:8, RESERVED:15};
 define("thirdparty/inflate.min", function(){});
 
 /** @license zlib.js 2012 - imaya [ https://github.com/imaya/zlib.js ] The MIT License */
-(function() {var COMPILED = !0, goog = goog || {};
+(function() {'use strict';var COMPILED = !0, goog = goog || {};
 goog.global = this;
 goog.DEBUG = !1;
 goog.LOCALE = "en";
@@ -5474,7 +5479,7 @@ define('utils/file_utils',['utils/misc_utils'], function(utils){
 					if (contents instanceof ArrayBuffer){
 						contents = new Uint8Array(contents);
 					}
-					writer.write(new Blob([contents]));
+					writer.write(contents);
 				}, error);
 			}, error);
 		}
@@ -5538,27 +5543,46 @@ define('utils/file_utils',['utils/misc_utils'], function(utils){
 							callback(entries);
 						} else {
 							entries = entries.concat(toArray(results));
-							readEntries();
+							callback(entries);
 						}
 					}, error);
 				}
 				readEntries();
 				
 			},
-			readBlob: function(blob, dataType, callback){
-				var reader = new FileReader();
-				reader.onloadend = function(e){
-					callback(reader.result);
+			readBlob: function(blobOrFile, dataType, callback){
+				var text2ua = function (s) {//TODO: Refactoring! Put method somewhere else
+					s = s.replace('\ufeff', '');
+					var ua = new Uint8Array(s.length);
+					for (var i = 0; i < s.length; i++) {
+						ua[i] = s.charCodeAt(i);
+					}
+					return ua;
+				};
+				if (blobOrFile instanceof Blob) {
+					var reader = new FileReader();
+					reader.onloadend = function (e) {
+						callback(reader.result);
+					}
+					reader["readAs" + dataType](blobOrFile);
+				} else if (typeof blobOrFile == 'string') {
+					callback(text2ua(blobOrFile).buffer);
+				} else {
+					throw new Error("Unknown type: ", typeof blobOrFile);
 				}
-				reader["readAs" + dataType](blob);
 			},
 			readFileEntry : function(fileEntry, dataType, callback){
-				fileEntry.file(function(file){
-					FileUtils.readBlob(file, dataType, callback);
-				});
+				if (dataType === 'Text') {
+					fileEntry.readAsText(function (data, lastModTime) {
+						callback(data);
+					});
+				} else if (dataType === 'ArrayBuffer') {
+					fileEntry.readAsText(function (data, lastModTime) {
+						FileUtils.readBlob(data, dataType, callback);
+					});
+				}
 			},
 			readFile : function(root, file, dataType, callback, error) {
-				
 				root.getFile(file, {create:false}, function(fileEntry){
 					FileUtils.readFileEntry(fileEntry, dataType, callback, error);
 				}, error);
@@ -6523,6 +6547,8 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
         this.store = store;
         this.name = name;
         this.refs = {};
+        this.projects = {};
+        this.locks = {};
         this.url = repoUrl.replace(/\?.*/, "").replace(/\/$/, "");
         username = username || "";
         password = password || "";
@@ -6565,8 +6591,6 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
         }
 
         var pushRequest = function(refPaths, packData) {
-            
-
             var pktLine = function(refPath) {
                 return refPath.sha + ' ' + refPath.head + ' ' + refPath.name;
             }
@@ -6582,6 +6606,27 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
             }
             bb.push('0000');
             bb.push(new Uint8Array(packData));
+            var blob = new Blob(bb);
+            return blob;
+
+        }
+
+        var removeRequest = function (refPaths) {
+            var pktLine = function (refPath) {
+                refPath.head = refPath.head || '0000000000000000000000000000000000000000';
+                return  refPath.sha + ' ' + refPath.head + ' ' + refPath.name;
+            }
+            var bb = []; //new BlobBuilder();
+            var str = pktLine(refPaths[0]) + '\0report-status\n';
+            str = padWithZeros(str.length + 4) + str;
+            bb.push(str);
+            for (var i = 1; i < refPaths.length; i++) {
+                if (!refPaths[i].head) continue;
+                var val = pktLine(refPaths[i]) + '\n';
+                val = padWithZeros(val.length + 4)
+                bb.push(val);
+            }
+            bb.push('0000');
             var blob = new Blob(bb);
             return blob;
 
@@ -6675,6 +6720,67 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
             });
         }
 
+        this.fetchProjectRefs = function (callback) {
+            var remote = this,
+                uri = this.makeUri('/info/refs', {service: "git-upload-pack"});
+            doGet(uri, function (data) {
+                var discInfo = parseDiscovery(data)
+                var i, ref
+                for (i = 0; i < discInfo.refs.length; i++) {
+                    ref = discInfo.refs[i]
+                    remote.addProjectRef(ref.name, ref.sha)
+                }
+                if (callback != "undefined") {
+                    callback(discInfo.refs)
+                }
+            });
+        }
+
+        this.fetchLockRefs = function (projectName, callback) {
+            var remote = this,
+                uri = this.makeUri('/info/refs', {service: "git-upload-pack"});
+            doGet(uri, function (data) {
+                var discInfo = parseDiscovery(data)
+                var i, ref
+                for (i = 0; i < discInfo.refs.length; i++) {
+                    ref = discInfo.refs[i]
+                    remote.addLockRef(projectName, ref.name, ref.sha)
+                }
+                if (callback != "undefined") {
+                    callback(discInfo.refs)
+                }
+            });
+        }
+
+        this.addProjectRef = function (fullName, sha) {
+            var type, name
+            if (fullName.slice(0, 20) == "refs/heads/projects/") {
+                type = fullName.split("/")[1];
+                name = fullName.split("/")[3];
+                this.projects[name] = {
+                    name: name,
+                    sha: sha,
+                    remote: this,
+                    type: type
+                }
+            }
+        }
+
+        this.addLockRef = function (projectName, fullName, sha) {
+            var type, name
+            var sliceLength = ("refs/heads/locks/" + projectName + "/").length;
+            if (fullName.slice(0, sliceLength) == "refs/heads/locks/" + projectName + "/") {
+                type = fullName.split("/")[1];
+                name = fullName.split("/")[4];
+                this.locks[name] = {
+                    name: name,
+                    sha: sha,
+                    remote: this,
+                    type: type
+                }
+            }
+        }
+
         this.fetchReceiveRefs = function(callback) {
             var remote = this,
                 uri = this.makeUri('/info/refs', {service: "git-receive-pack"});
@@ -6729,36 +6835,11 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
                             callback(objects, packData, common, shallow);
                         }
                     }, packProgress);
-                    // var packWorker = new Worker(workerUrl);
-                    // packWorker.onmessage = function(evt){
-                    //     var msg = evt.data;
-                    //     if (msg.type == GitLiteWorkerMessages.FINISHED && callback){
-                    //         packWorker.terminate();
-                    //         callback(msg.objects, new Uint8Array(msg.data), msg.common);
-                    //     }
-                    //     else if (msg.type == GitLiteWorkerMessages.RETRIEVE_OBJECT){
-                    //         store._retrieveRawObject(msg.sha, "ArrayBuffer", function(baseObject){
-                    //             packWorker.postMessage({type: GitLiteWorkerMessages.OBJECT_RETRIEVED, id: msg.id, object: baseObject}, [baseObject.data]);
-                    //             var x = 0;
-                    //         });
-                    //     }
-                    //     else if (progress && msg.type == GitLiteWorkerMessages.PROGRESS){
-                    //         progress(msg);
-                    //     }
-                    // }
-                    // packWorker.postMessage({type: GitLiteWorkerMessages.START, data:binaryData}, [binaryData]);
                 }
             }
             if (receiveProgress){
                 xhr.onprogress = function(evt){
-                    // if (evt.lengthComputable){
-                    //     var pct = evt.loaded / evt.total;
-                    //     receiveProgress({pct: pct, msg: "Received " + evt.loaded + "/" + evt.total + " bytes"});
-                    // }
-                    // else{
-
-                        receiveProgress({pct: 100, msg: "Received " + (evt.loaded/1048576).toFixed(2) + " MB"});
-                    // }
+                    receiveProgress({pct: 100, msg: "Received " + (evt.loaded/1048576).toFixed(2) + " MB"});
                 }
             }
             var xhr2ErrorShim = function(){
@@ -6770,38 +6851,7 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
             xhr.onabort = xhr2ErrorShim;
 
             xhr.send(body);
-
-            //  $.ajax({
-            //    url: url,
-            //    data: body,
-            //    type: "POST",
-            //    contentType: "application/x-git-upload-pack-request",
-            //    beforeSend: function(xhr) {
-            //      xhr.overrideMimeType('text/plain; charset=x-user-defined')
-            //    },
-            //    success: function(data, textStatus, xhr) {
-            //      var binaryData = xhr.responseText
-            //      if (haveRefs && binaryData.indexOf("NAK") == 4){
-            //      	if (moreHaves){
-            // 	thisRemote.repo._getCommitGraph(moreHaves, 32, function(commits, next){
-            // 		thisRemote.fetchRef(wantRefs, commits, next, callback);
-            // 	});
-            // }
-            //      }
-            //      else{
-            // var parser = new Git.UploadPackParser(binaryData, repo)
-            // parser.parse(function(objects, packData, common){
-            // 	if (callback != "undefined") {
-            // 	  callback(objects, packData, common);
-            // 	}
-            // });
-            // }        
-            //    },
-            //    error: function(xhr, data, e) {
-            //      Git.displayError("ERROR Status: " + xhr.status + ", response: " + xhr.responseText)
-            //    }
-            //  });
-        },
+        };
 
         this.pushRefs = function(refPaths, packData, success, progress) {
             var url = this.makeUri('/git-receive-pack');
@@ -6824,30 +6874,47 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
                         ajaxErrorHandler.call(obj, xhr); 
                     }
                 }
-            }
+            };
             xhr.setRequestHeader('Content-Type', 'application/x-git-receive-pack-request');
             var bodySize = (body.size/1024).toFixed(2);
             xhr.upload.onprogress = function(evt){
                 progress({pct: evt.loaded/body.size * 100, msg: 'Sending ' + (evt.loaded/1024).toFixed(2) + '/' + bodySize + " KB"});
+            };
+            xhr.send(body);
+        };
+
+        this.removeRefs = function (refPaths, success, progress) {
+            var url = this.makeUri('/git-receive-pack');
+            var body = removeRequest(refPaths);
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", url, true, username, password);
+            xhr.onload = function (evt) {
+                if (xhr.readyState == 4) {
+                    if (xhr.status == 200) {
+                        var msg = xhr.response;
+                        if (msg.indexOf('000eunpack ok') == 0) {
+                            success();
+                        }
+                        else {
+                            error({type: errutils.UNPACK_ERROR, msg: errutils.UNPACK_ERROR_MSG});
+                        }
+                    }
+                    else {
+                        var obj = {url: url, type: 'POST'};
+                        ajaxErrorHandler.call(obj, xhr);
+                    }
+                }
+            }
+            xhr.setRequestHeader('Content-Type', 'application/x-git-receive-pack-request');
+            var bodySize = (body.size / 1024).toFixed(2);
+            xhr.upload.onprogress = function (evt) {
+                progress({
+                    pct: evt.loaded / body.size * 100,
+                    msg: 'Sending ' + (evt.loaded / 1024).toFixed(2) + '/' + bodySize + " KB"
+                });
             }
             xhr.send(body);
-            /*Gito.FileUtils.readBlob(body, 'BinaryString', function(strData){
-    		$.ajax({
-    			url : url,
-    			data : strData,
-    			type : 'POST',
-    			contentType : 'application/x-git-receive-pack-request',
-    			processData : false,
-    			//mimeType :'text/plain; charset=x-user-defined',
-  		  	success : function(data, textstatus, xhr){
-  		  		var x = 0;
-  		  	},
-  		  	error : function (xhr, data, e){
-  		  		Git.displayError("ERROR Status: " + xhr.status + ", response: " + xhr.responseText)
-  		  	}
-    		});
-    	});*/
-        }
+        };
 
         this.makeUri = function(path, extraOptions) {
             var uri = this.url + path
@@ -6889,6 +6956,14 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
 
         this.getRef = function(name) {
             return this.refs[this.name + "/" + name]
+        }
+
+        this.getProjectRefs = function () {
+            return _(this.projects).values()
+        }
+
+        this.getProjectLockRefs = function () {
+            return _(this.locks).values()
         }
     }
     return SmartHttpRemote;
@@ -7225,15 +7300,30 @@ define('commands/clone',['commands/object2file', 'formats/smart_http_remote', 'f
                                 packNameSha = Crypto.SHA1(sortedShas);
                                 
                                 var packName = 'pack-' + packNameSha;
-                                mkdirs(gitDir, 'objects', function(objectsDir){
-                                    mkfile(objectsDir, 'pack/' + packName + '.pack', packData.buffer);
-                                    mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxData);
-                                    
-                                    var packIdx = new PackIndex(packIdxData);
-                                    store.loadWith(objectsDir, [{pack: new Pack(packData, self), idx: packIdx}]);
-                                    progress({pct: 95, msg: "Building file tree from pack. Be patient..."});
-                                    _createCurrentTreeFromPack(dir, store, localHeadRef.sha, function(){
-                                        createInitialConfig(shallow, localHeadRef, callback);
+                                mkdirs(gitDir, 'objects', function (objectsDir) {//TODO: REFACTORING!!! Put method somewhere else
+                                    var promise = $.Deferred();
+                                    mkdirs(objectsDir, 'pack', function(packDir) {
+                                        mkfile(packDir, packName + '.pack', packData.buffer);
+                                        packIdxDataStr = new Uint8Array(packIdxData);
+                                        var ua2text =function(ua) {
+                                            var s = '';
+                                            for (var i = 0; i < ua.length; i++) {
+                                                s += String.fromCharCode(ua[i]);
+                                            }
+                                            return s;
+                                        };
+                                        packIdxDataStr = ua2text(packIdxDataStr);
+                                        packIdxDataStr = '\ufeff' + packIdxDataStr;
+                                        mkfile(packDir, packName + '.idx', packIdxDataStr);
+                                        promise.resolve();
+                                    });
+                                    promise.done(function() {
+                                        var packIdx = new PackIndex(packIdxData);
+                                        store.loadWith(objectsDir, [{pack: new Pack(packData, self), idx: packIdx}]);
+                                        progress({pct: 95, msg: "Building file tree from pack. Be patient..."});
+                                        _createCurrentTreeFromPack(dir, store, localHeadRef.sha, function () {
+                                            createInitialConfig(shallow, localHeadRef, callback);
+                                        });
                                     });
                                 }, ferror); 
                             }, null, packProgress);
@@ -7247,59 +7337,75 @@ define('commands/clone',['commands/object2file', 'formats/smart_http_remote', 'f
 });
 define('commands/commit',['utils/file_utils', 'utils/misc_utils', 'utils/errors'], function (fileutils, miscutils, errutils) {
 
-    var walkFiles = function(dir, store, success){
-               
+    var walkFiles = function(dir, store, success){//TODO: Refactoring!!!
         fileutils.ls(dir, function(entries){
             if (!entries.length){
                 success();
                 return;
             }
-
             var treeEntries = [];
-            entries.asyncEach(function(entry, done){
-                if (entry.name == '.git'){
-                    done();
-                    return;
-                }
-                if (entry.isDirectory){
-                    walkFiles(entry, store, function(sha){
-                        if (sha){
-                            treeEntries.push({name: /*'40000 ' + */entry.name, sha: miscutils.convertShaToBytes(sha), isBlob: false});
-                        }
-                        done();
-                    });
-                    
-                }
-                else{
-                    entry.file(function(file){
-                        var reader = new FileReader();
-                        reader.onloadend = function(){
-                            store.writeRawObject('blob', new Uint8Array(reader.result), function(sha){
-                                treeEntries.push({name: /*'100644 ' + */entry.name, sha: miscutils.convertShaToBytes(sha), isBlob: true});
-                                done();
-                            });
-                        }
-                        reader.readAsArrayBuffer(file);
-                    });
-                }
-            },
-            function(){
-                treeEntries.sort(function(a,b){
+            var Async = app.getModule("utils/Async");
+            var processAllResolvedEntries = function () {
+                treeEntries.sort(function (a, b) {
                     //http://permalink.gmane.org/gmane.comp.version-control.git/195004
                     var aName = a.isBlob ? a.name : (a.name + '/');
                     var bName = b.isBlob ? b.name : (b.name + '/');
                     if (aName < bName) return -1;
                     else if (aName > bName) return 1;
                     else
-                    return 0;
+                        return 0;
                 });
                 store._writeTree(treeEntries, success);
-            })
+            };
+            var readEntry = function (entry, index) {
+                var promise = new $.Deferred();
+                if (entry.name == '.git') {
+                    return promise.resolve().promise();
+                }
+                if (entry.isDirectory) {
+                    walkFiles(entry, store, function (sha) {
+                        if (sha) {
+                            treeEntries.push({
+                                name: /*'40000 ' + */entry.name,
+                                sha: miscutils.convertShaToBytes(sha),
+                                isBlob: false
+                            });
+                        }
+                        promise.resolve();
+                    });
+
+                } else {
+                    entry.readAsText(function (content) {
+                        var reader = new FileReader();
+                        reader.onloadend = function () {
+                            store.writeRawObject('blob', new Uint8Array(reader.result), function (sha) {
+                                treeEntries.push({
+                                    name: /*'100644 ' + */entry.name,
+                                    sha: miscutils.convertShaToBytes(sha),
+                                    isBlob: true
+                                });
+                                promise.resolve();
+                            });
+                        }
+                        reader.onerror = function (err) {
+                            promise.reject();
+                        }
+                        reader.readAsArrayBuffer(new Blob([content]));
+                    });
+                }
+                return promise.promise();
+            };
+            var masterPromise = Async.doInParallel(entries, readEntry, true);
+            masterPromise.done(function () {
+                processAllResolvedEntries();
+            }).fail(function (err) {
+                throw err;
+            });
         });       
     }
 
     var checkTreeChanged = function(store, parent, sha, success, error){
-        if (!parent || !parent.length){
+        if (!parent || !parent.length || parent === '0000000000000000000000000000000000000000') {
             success();
         }
         else{
@@ -7334,7 +7440,7 @@ define('commands/commit',['utils/file_utils', 'utils/misc_utils', 'utils/errors'
                 var offsetStr = '' + (offset < 0 ? '-' : '+') + (absOffset < 10 ? '0' : '') + absOffset + '00';
                 dateString = dateString + ' ' + offsetStr;
                 var commitContent = ['tree ',sha,'\n'];
-                if (parent && parent.length){
+                if (parent && parent.length && parent != '0000000000000000000000000000000000000000'){
                     commitContent.push('parent ', parent);
                     if (parent.charAt(parent.length - 1) != '\n'){
                         commitContent.push('\n');
@@ -7792,10 +7898,20 @@ define('commands/pull',['commands/treemerger', 'commands/object2file', 'commands
                                             packNameSha = Crypto.SHA1(sortedShas);
                                             
                                             var packName = 'pack-' + packNameSha;
-                                            mkdirs(store.dir, '.git/objects', function(objectsDir){
+                                            mkdirs(store.dir, '.git/objects', function(objectsDir){//TODO: REFACTORING!!!
                                                 store.objectsDir = objectsDir;
                                                 mkfile(objectsDir, 'pack/' + packName + '.pack', packData.buffer);
-                                                mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxData);
+                                                packIdxDataStr = new Uint8Array(packIdxData);
+                                                var ua2text =function(ua) {
+                                                    var s = '';
+                                                    for (var i = 0; i < ua.length; i++) {
+                                                        s += String.fromCharCode(ua[i]);
+                                                    }
+                                                    return s;
+                                                };
+                                                packIdxDataStr = ua2text(packIdxDataStr);
+                                                packIdxDataStr = '\ufeff' + packIdxDataStr;
+                                                mkfile(objectsDir, 'pack/' + packName + '.idx', packIdxDataStr);
                                                 
                                                 var packIdx = new PackIndex(packIdxData);
                                                 if (!store.packs){
@@ -7816,18 +7932,8 @@ define('commands/pull',['commands/treemerger', 'commands/object2file', 'commands
                                             });
                                         }
                                         else{
-                                            // non-fast-forward merge
                                             nonFastForward();
-                                            // var shas = [wantRef.localHead, common[i], wantRef.sha]
-                                            // store._getTreesFromCommits(shas, function(trees){
-                                            //     treeMerger.mergeTrees(store, trees[0], trees[1], trees[2], function(finalTree){
-                                            //         mkfile(store.dir, '.git/' + wantRef.name, sha, done); 
-                                            //     }, function(e){errors.push(e);done();});
-                                            // });
-                                            
                                         }
-                                            
-                                        
                                     }, nonFastForward, fetchProgress);
                                 });
                                                              
@@ -7845,38 +7951,48 @@ define('commands/pull',['commands/treemerger', 'commands/object2file', 'commands
     return pull;
 });
 define('commands/push',['formats/smart_http_remote', 'formats/pack', 'utils/progress_chunker', 'utils/errors'], function(SmartHttpRemote, Pack, ProgressChunker, errutils){
-    var push = function(options, success, error){
-        
+    var push = function (options, success, error) {
+        var removeExistingBranch = options.remove;
+        if(removeExistingBranch) {
+            removeBranch.call(this, options, success, error);
+        } else {
+            pushToBranch.call(this, options, success, error);
+        }
+    }
+
+    var pushToBranch = function (options, success, error) {
         var store = options.objectStore,
             username = options.username,
             password = options.password,
-            progress = options.progress || function(){};
+            progress = options.progress || function () {
+                };
 
         var remotePushProgress;
-        if (options.progress){
+        if (options.progress) {
             var chunker = new ProgressChunker(progress);
             remotePushProgress = chunker.getChunk(40, .6);
         }
-        else{
-            remotePushProgress = function(){};
+        else {
+            remotePushProgress = function () {
+            };
         }
 
-        store.getConfig(function(config){
+        store.getConfig(function (config) {
             var url = config.url || options.url;
 
-            if (!url){
+            if (!url) {
                 error({type: errutils.PUSH_NO_REMOTE, msg: errutils.PUSH_NO_REMOTE_MSG});
                 return;
             }
 
             var remote = new SmartHttpRemote(store, "origin", url, username, password, error);
-            progress({pct:0, msg: 'Contacting server...'});
-            remote.fetchReceiveRefs(function(refs){
-                store._getCommitsForPush(refs, config.remoteHeads, function(commits, ref){
+            progress({pct: 0, msg: 'Contacting server...'});
+            remote.fetchReceiveRefs(function (refs) {
+                store._getCommitsForPush(refs, config.remoteHeads, function (commits, ref) {
                     progress({pct: 20, msg: 'Building pack...'});
-                    Pack.buildPack(commits, store, function(packData){
+                    Pack.buildPack(commits, store, function (packData) {
                         progress({pct: 40, msg: 'Sending pack...'});
-                        remote.pushRefs([ref], packData, function(){
+                        remote.pushRefs([ref], packData, function () {
                             config.remoteHeads = config.remoteHeads || {};
                             config.remoteHeads[ref.name] = ref.head;
                             config.url = url;
@@ -7886,7 +8002,57 @@ define('commands/push',['formats/smart_http_remote', 'formats/pack', 'utils/prog
                 }, error);
             });
         });
-    }
+    };
+
+    var removeBranch = function (options, success, error) {
+        var store = options.objectStore,
+            username = options.username,
+            password = options.password,
+            progress = options.progress || function () {
+                };
+
+        var remotePushProgress;
+        if (options.progress) {
+            var chunker = new ProgressChunker(progress);
+            remotePushProgress = chunker.getChunk(40, .6);
+        }
+        else {
+            remotePushProgress = function () {
+            };
+        }
+
+        store.getConfig(function (config) {
+            var url = config.url || options.url;
+
+            if (!url) {
+                error({type: errutils.PUSH_NO_REMOTE, msg: errutils.PUSH_NO_REMOTE_MSG});
+                return;
+            }
+
+            var remote = new SmartHttpRemote(store, "origin", url, username, password, error);
+            progress({pct: 0, msg: 'Contacting server...'});
+            remote.fetchReceiveRefs(function (refs) {
+                var remoteRef, headRef;
+                store.getHeadRef(function (refName) {
+                    headRef = refName;
+                    for (var i = 0; i < refs.length; i++) {
+                        if (refs[i].name == headRef) {
+                            remoteRef = refs[i];
+                            break;
+                        }
+                    }
+                    progress({pct: 20, msg: 'Building pack...'});
+                    progress({pct: 40, msg: 'Sending pack...'});
+                    remote.removeRefs([remoteRef], function () {
+                        config.remoteHeads = config.remoteHeads || {};
+                        config.remoteHeads[remoteRef.name] = remoteRef.head;
+                        config.url = url;
+                        store.setConfig(config, success);
+                    }, remotePushProgress);
+                }, error);
+            });
+        });
+    };
     return push;
 });
 define('commands/branch',['utils/file_utils', 'utils/errors'], function(fileutils, errutils){
@@ -7921,19 +8087,20 @@ define('commands/branch',['utils/file_utils', 'utils/errors'], function(fileutil
             error({type: errutils.BRANCH_ALREADY_EXISTS, msg: errutils.BRANCH_ALREADY_EXISTS_MSG});
         }
 
-        store._getHeadForRef('refs/heads/' + branchName, branchAlreadyExists, function(e){
-            if (e.code == FileError.NOT_FOUND_ERR){
-                store.getHeadRef(function(refName){
-                    store._getHeadForRef(refName, function(sha){
-                        store.createNewRef('refs/heads/' + branchName, sha, success);
-                    }, ferror);
-                });
-            }
-            else{
+        store._getHeadForRef('refs/heads/' + branchName, branchAlreadyExists, function (e) {
+            if (e.code == FileError.NOT_FOUND_ERR || e.name === 'NotFoundError') {//TODO: REFACTORING!!!!
+                fileutils.mkfile(options.dir, '.git/refs/heads/' + branchName, '0000000000000000000000000000000000000000', function () {
+                    store.getHeadRef(function (refName) {
+                        store._getHeadForRef(refName, function (sha) {
+                            store.createNewRef('refs/heads/' + branchName, sha, success);
+                        }, ferror);
+                    });
+                }, ferror);//TODO: CHECK AND REFACTOR!!!
+            } else {
                 ferror(e);
             }
         });
-    }
+    };
     return branch;
 });
 define('commands/checkout',['commands/object2file', 'commands/conditions', 'utils/file_utils', 'utils/errors'], function(object2file, Conditions, fileutils, errutils){
@@ -7986,7 +8153,7 @@ define('commands/checkout',['commands/object2file', 'commands/conditions', 'util
             });
         }, 
         function(e){
-            if (e.code == FileError.NOT_FOUND_ERR){
+            if (e.code == FileError.NOT_FOUND_ERR || e.name === 'NotFoundError'){//TODO: Refactoring!
                 error({type: errutils.CHECKOUT_BRANCH_NO_EXISTS, msg: CHECKOUT_BRANCH_NO_EXISTS_MSG});
             }
             else{
@@ -7997,35 +8164,7 @@ define('commands/checkout',['commands/object2file', 'commands/conditions', 'util
     }
     return checkout;
 });
-// Underscore.js 1.1.3
-// (c) 2010 Jeremy Ashkenas, DocumentCloud Inc.
-// Underscore is freely distributable under the MIT license.
-// Portions of Underscore are inspired or borrowed from Prototype,
-// Oliver Steele's Functional, and John Resig's Micro-Templating.
-// For all details and documentation:
-// http://documentcloud.github.com/underscore
-(function(){var p=this,C=p._,m={},j=Array.prototype,n=Object.prototype,i=j.slice,D=j.unshift,E=n.toString,q=n.hasOwnProperty,s=j.forEach,t=j.map,u=j.reduce,v=j.reduceRight,w=j.filter,x=j.every,y=j.some,o=j.indexOf,z=j.lastIndexOf;n=Array.isArray;var F=Object.keys,c=function(a){return new l(a)};if(typeof module!=="undefined"&&module.exports){module.exports=c;c._=c}else p._=c;c.VERSION="1.1.3";var k=c.each=c.forEach=function(a,b,d){if(s&&a.forEach===s)a.forEach(b,d);else if(c.isNumber(a.length))for(var e=
-0,f=a.length;e<f;e++){if(b.call(d,a[e],e,a)===m)break}else for(e in a)if(q.call(a,e))if(b.call(d,a[e],e,a)===m)break};c.map=function(a,b,d){if(t&&a.map===t)return a.map(b,d);var e=[];k(a,function(f,g,h){e[e.length]=b.call(d,f,g,h)});return e};c.reduce=c.foldl=c.inject=function(a,b,d,e){var f=d!==void 0;if(u&&a.reduce===u){if(e)b=c.bind(b,e);return f?a.reduce(b,d):a.reduce(b)}k(a,function(g,h,G){d=!f&&h===0?g:b.call(e,d,g,h,G)});return d};c.reduceRight=c.foldr=function(a,b,d,e){if(v&&a.reduceRight===
-v){if(e)b=c.bind(b,e);return d!==void 0?a.reduceRight(b,d):a.reduceRight(b)}a=(c.isArray(a)?a.slice():c.toArray(a)).reverse();return c.reduce(a,b,d,e)};c.find=c.detect=function(a,b,d){var e;A(a,function(f,g,h){if(b.call(d,f,g,h)){e=f;return true}});return e};c.filter=c.select=function(a,b,d){if(w&&a.filter===w)return a.filter(b,d);var e=[];k(a,function(f,g,h){if(b.call(d,f,g,h))e[e.length]=f});return e};c.reject=function(a,b,d){var e=[];k(a,function(f,g,h){b.call(d,f,g,h)||(e[e.length]=f)});return e};
-c.every=c.all=function(a,b,d){b=b||c.identity;if(x&&a.every===x)return a.every(b,d);var e=true;k(a,function(f,g,h){if(!(e=e&&b.call(d,f,g,h)))return m});return e};var A=c.some=c.any=function(a,b,d){b=b||c.identity;if(y&&a.some===y)return a.some(b,d);var e=false;k(a,function(f,g,h){if(e=b.call(d,f,g,h))return m});return e};c.include=c.contains=function(a,b){if(o&&a.indexOf===o)return a.indexOf(b)!=-1;var d=false;A(a,function(e){if(d=e===b)return true});return d};c.invoke=function(a,b){var d=i.call(arguments,
-2);return c.map(a,function(e){return(b?e[b]:e).apply(e,d)})};c.pluck=function(a,b){return c.map(a,function(d){return d[b]})};c.max=function(a,b,d){if(!b&&c.isArray(a))return Math.max.apply(Math,a);var e={computed:-Infinity};k(a,function(f,g,h){g=b?b.call(d,f,g,h):f;g>=e.computed&&(e={value:f,computed:g})});return e.value};c.min=function(a,b,d){if(!b&&c.isArray(a))return Math.min.apply(Math,a);var e={computed:Infinity};k(a,function(f,g,h){g=b?b.call(d,f,g,h):f;g<e.computed&&(e={value:f,computed:g})});
-return e.value};c.sortBy=function(a,b,d){return c.pluck(c.map(a,function(e,f,g){return{value:e,criteria:b.call(d,e,f,g)}}).sort(function(e,f){var g=e.criteria,h=f.criteria;return g<h?-1:g>h?1:0}),"value")};c.sortedIndex=function(a,b,d){d=d||c.identity;for(var e=0,f=a.length;e<f;){var g=e+f>>1;d(a[g])<d(b)?e=g+1:f=g}return e};c.toArray=function(a){if(!a)return[];if(a.toArray)return a.toArray();if(c.isArray(a))return a;if(c.isArguments(a))return i.call(a);return c.values(a)};c.size=function(a){return c.toArray(a).length};
-c.first=c.head=function(a,b,d){return b&&!d?i.call(a,0,b):a[0]};c.rest=c.tail=function(a,b,d){return i.call(a,c.isUndefined(b)||d?1:b)};c.last=function(a){return a[a.length-1]};c.compact=function(a){return c.filter(a,function(b){return!!b})};c.flatten=function(a){return c.reduce(a,function(b,d){if(c.isArray(d))return b.concat(c.flatten(d));b[b.length]=d;return b},[])};c.without=function(a){var b=i.call(arguments,1);return c.filter(a,function(d){return!c.include(b,d)})};c.uniq=c.unique=function(a,
-b){return c.reduce(a,function(d,e,f){if(0==f||(b===true?c.last(d)!=e:!c.include(d,e)))d[d.length]=e;return d},[])};c.intersect=function(a){var b=i.call(arguments,1);return c.filter(c.uniq(a),function(d){return c.every(b,function(e){return c.indexOf(e,d)>=0})})};c.zip=function(){for(var a=i.call(arguments),b=c.max(c.pluck(a,"length")),d=Array(b),e=0;e<b;e++)d[e]=c.pluck(a,""+e);return d};c.indexOf=function(a,b){if(o&&a.indexOf===o)return a.indexOf(b);for(var d=0,e=a.length;d<e;d++)if(a[d]===b)return d;
-return-1};c.lastIndexOf=function(a,b){if(z&&a.lastIndexOf===z)return a.lastIndexOf(b);for(var d=a.length;d--;)if(a[d]===b)return d;return-1};c.range=function(a,b,d){var e=i.call(arguments),f=e.length<=1;a=f?0:e[0];b=f?e[0]:e[1];d=e[2]||1;e=Math.max(Math.ceil((b-a)/d),0);f=0;for(var g=Array(e);f<e;){g[f++]=a;a+=d}return g};c.bind=function(a,b){var d=i.call(arguments,2);return function(){return a.apply(b||{},d.concat(i.call(arguments)))}};c.bindAll=function(a){var b=i.call(arguments,1);if(b.length==
-0)b=c.functions(a);k(b,function(d){a[d]=c.bind(a[d],a)});return a};c.memoize=function(a,b){var d={};b=b||c.identity;return function(){var e=b.apply(this,arguments);return e in d?d[e]:d[e]=a.apply(this,arguments)}};c.delay=function(a,b){var d=i.call(arguments,2);return setTimeout(function(){return a.apply(a,d)},b)};c.defer=function(a){return c.delay.apply(c,[a,1].concat(i.call(arguments,1)))};var B=function(a,b,d){var e;return function(){var f=this,g=arguments,h=function(){e=null;a.apply(f,g)};d&&
-clearTimeout(e);if(d||!e)e=setTimeout(h,b)}};c.throttle=function(a,b){return B(a,b,false)};c.debounce=function(a,b){return B(a,b,true)};c.wrap=function(a,b){return function(){var d=[a].concat(i.call(arguments));return b.apply(b,d)}};c.compose=function(){var a=i.call(arguments);return function(){for(var b=i.call(arguments),d=a.length-1;d>=0;d--)b=[a[d].apply(this,b)];return b[0]}};c.keys=F||function(a){if(c.isArray(a))return c.range(0,a.length);var b=[],d;for(d in a)if(q.call(a,d))b[b.length]=d;return b};
-c.values=function(a){return c.map(a,c.identity)};c.functions=c.methods=function(a){return c.filter(c.keys(a),function(b){return c.isFunction(a[b])}).sort()};c.extend=function(a){k(i.call(arguments,1),function(b){for(var d in b)a[d]=b[d]});return a};c.clone=function(a){return c.isArray(a)?a.slice():c.extend({},a)};c.tap=function(a,b){b(a);return a};c.isEqual=function(a,b){if(a===b)return true;var d=typeof a;if(d!=typeof b)return false;if(a==b)return true;if(!a&&b||a&&!b)return false;if(a.isEqual)return a.isEqual(b);
-if(c.isDate(a)&&c.isDate(b))return a.getTime()===b.getTime();if(c.isNaN(a)&&c.isNaN(b))return false;if(c.isRegExp(a)&&c.isRegExp(b))return a.source===b.source&&a.global===b.global&&a.ignoreCase===b.ignoreCase&&a.multiline===b.multiline;if(d!=="object")return false;if(a.length&&a.length!==b.length)return false;d=c.keys(a);var e=c.keys(b);if(d.length!=e.length)return false;for(var f in a)if(!(f in b)||!c.isEqual(a[f],b[f]))return false;return true};c.isEmpty=function(a){if(c.isArray(a)||c.isString(a))return a.length===
-0;for(var b in a)if(q.call(a,b))return false;return true};c.isElement=function(a){return!!(a&&a.nodeType==1)};c.isArray=n||function(a){return!!(a&&a.concat&&a.unshift&&!a.callee)};c.isArguments=function(a){return!!(a&&a.callee)};c.isFunction=function(a){return!!(a&&a.constructor&&a.call&&a.apply)};c.isString=function(a){return!!(a===""||a&&a.charCodeAt&&a.substr)};c.isNumber=function(a){return!!(a===0||a&&a.toExponential&&a.toFixed)};c.isNaN=function(a){return E.call(a)==="[object Number]"&&isNaN(a)};
-c.isBoolean=function(a){return a===true||a===false};c.isDate=function(a){return!!(a&&a.getTimezoneOffset&&a.setUTCFullYear)};c.isRegExp=function(a){return!!(a&&a.test&&a.exec&&(a.ignoreCase||a.ignoreCase===false))};c.isNull=function(a){return a===null};c.isUndefined=function(a){return a===void 0};c.noConflict=function(){p._=C;return this};c.identity=function(a){return a};c.times=function(a,b,d){for(var e=0;e<a;e++)b.call(d,e)};c.mixin=function(a){k(c.functions(a),function(b){H(b,c[b]=a[b])})};var I=
-0;c.uniqueId=function(a){var b=I++;return a?a+b:b};c.templateSettings={evaluate:/<%([\s\S]+?)%>/g,interpolate:/<%=([\s\S]+?)%>/g};c.template=function(a,b){var d=c.templateSettings;d="var __p=[],print=function(){__p.push.apply(__p,arguments);};with(obj||{}){__p.push('"+a.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(d.interpolate,function(e,f){return"',"+f.replace(/\\'/g,"'")+",'"}).replace(d.evaluate||null,function(e,f){return"');"+f.replace(/\\'/g,"'").replace(/[\r\n\t]/g," ")+"__p.push('"}).replace(/\r/g,
-"\\r").replace(/\n/g,"\\n").replace(/\t/g,"\\t")+"');}return __p.join('');";d=new Function("obj",d);return b?d(b):d};var l=function(a){this._wrapped=a};c.prototype=l.prototype;var r=function(a,b){return b?c(a).chain():a},H=function(a,b){l.prototype[a]=function(){var d=i.call(arguments);D.call(d,this._wrapped);return r(b.apply(c,d),this._chain)}};c.mixin(c);k(["pop","push","reverse","shift","sort","splice","unshift"],function(a){var b=j[a];l.prototype[a]=function(){b.apply(this._wrapped,arguments);
-return r(this._wrapped,this._chain)}});k(["concat","join","slice"],function(a){var b=j[a];l.prototype[a]=function(){return r(b.apply(this._wrapped,arguments),this._chain)}});l.prototype.chain=function(){this._chain=true;return this};l.prototype.value=function(){return this._wrapped}})();
-
-define("thirdparty/underscore-min", function(){});
-
-define('objectstore/objects',['utils/misc_utils', 'thirdparty/underscore-min'], function(utils) {
+define('objectstore/objects',['utils/misc_utils'/*, 'thirdparty/underscore-min'*/], function(utils) {
     var map = {
         "commit": 1,
         "tree": 2,
@@ -8209,38 +8348,42 @@ define('objectstore/file_repo',['formats/pack', 'formats/pack_index', 'objectsto
 				objectsDir.getDirectory('pack', {create:true}, function(packDir){
 					var packEntries = [];
 					var reader = packDir.createReader();
-					var readEntries = function(){
-						reader.readEntries(function(entries){
-						    if (entries.length){
-								for (var i = 0; i < entries.length; i++){
+					var readEntries = function (secondRun) {
+						reader.readEntries(function (entries) {
+							if (entries.length && !secondRun) {
+								for (var i = 0; i < entries.length; i++) {
 									if (entries[i].name.endsWith('.pack'))
 										packEntries.push(entries[i]);
 								}
-								readEntries();
-							}
-							else{
-								if (packEntries.length){
-									var counter = {x : 0};
-									packEntries.forEach(function(entry, i){
-										fileutils.readFile(packDir, entry.name, "ArrayBuffer", function(packData){
+								readEntries(true);
+							} else {
+								if (packEntries.length) {
+									var counter = {x: 0};
+									packEntries.forEach(function (entry, i) {
+										fileutils.readFile(packDir, entry.name, "ArrayBuffer", function (packData) {
 											var nameRoot = entry.name.substring(0, entry.name.lastIndexOf('.pack'));
-											fileutils.readFile(packDir, nameRoot + '.idx', 'ArrayBuffer', function(idxData){
-												thiz.packs.push({pack: new Pack(packData, thiz), idx: new PackIndex(idxData)});
+											fileutils.readFile(packDir, nameRoot + '.idx', 'ArrayBuffer', function (idxData) {
+												thiz.packs.push({
+													pack: new Pack(packData, thiz),
+													idx: new PackIndex(idxData)
+												});
 												counter.x += 1;
-												if (counter.x == packEntries.length){
+												if (counter.x == packEntries.length) {
 													callback();
 												}
-											}, fe);
+											}, function(err) {
+												console.error(err, " : ", entry);
+											});
 										}, fe);
 									});
 								}
-								else{
+								else {
 									callback();
 								}
 							}
 						}, fe);
 					}
-					readEntries();
+					readEntries(false);
 				}, fe);
 			}, fe);
 		},
@@ -8381,7 +8524,7 @@ define('objectstore/file_repo',['formats/pack', 'formats/pack_index', 'objectsto
 					},
 					function(e){
 						// No commits yet
-						if (e.code == FileError.NOT_FOUND_ERR){
+						if (e.code == FileError.NOT_FOUND_ERR || e.name === 'NotFoundError'){//TODO: Refactoring!
 							error({type: errutils.COMMIT_NO_CHANGES, msg: errutils.COMMIT_NO_CHANGES_MSG});
 						}
 						else{
@@ -8424,7 +8567,7 @@ define('objectstore/file_repo',['formats/pack', 'formats/pack_index', 'objectsto
 				}, fe);
 			}, 
 			function(e){
-				if (e.code == FileError.NOT_FOUND_ERR){
+				if (e.code == FileError.NOT_FOUND_ERR || e.name === 'NotFoundError'){//TODO: Refactoring
 					callback([]);
 				}
 				else{
@@ -8541,7 +8684,7 @@ define('objectstore/file_repo',['formats/pack', 'formats/pack_index', 'objectsto
 				self.load(success);
 			},
 			function(e){
-				if (e.code == FileError.NOT_FOUND_ERR){
+				if (e.code == FileError.NOT_FOUND_ERR || e.name === 'NotFoundError'){//TODO: Refactoring
 					self._init(success);
 				}
 				else{
@@ -8618,7 +8761,7 @@ define('objectstore/file_repo',['formats/pack', 'formats/pack_index', 'objectsto
 						 if(!file.size){
 						 	var content = utils.deflate(store);
 						 	fileEntry.createWriter(function(fileWriter){
-						 		fileWriter.write(new Blob([content]));;
+								fileWriter.write(content);
 						 		callback(digest);
 						 	}, utils.errorHandler);
 						 }
@@ -8650,7 +8793,7 @@ define('objectstore/file_repo',['formats/pack', 'formats/pack_index', 'objectsto
 			fileutils.readFile(this.dir, '.git/config.json', 'Text', function(configStr){
 				success(JSON.parse(configStr));
 			}, function(e){
-				if (e.code == FileError.NOT_FOUND_ERR){
+				if (e.code == FileError.NOT_FOUND_ERR || e.name === 'NotFoundError'){//TODO: Refactoring
 					success({});
 				}
 				else{
@@ -8803,55 +8946,52 @@ GitLiteWorkerMessages = {
     API_CALL_CURRENT_BRANCH: 16, 
     API_CALL_LOCAL_BRANCHES: 17,
     API_CALL_REMOTE_BRANCHES: 18,
+    API_CALL_PROJECT_REFS: 19,
+    API_CALL_PROJECT_LOCKS: 20,
 
     SUCCESS: 10,
     ERROR: 11
 };
 define("workers/worker_messages", function(){});
 
-// requirejs.config({
-//     shim: {
-
-//     }
-// });
 
 define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pull', 'commands/push', 'commands/branch', 'commands/checkout', 'commands/conditions', 'objectstore/file_repo', 'formats/smart_http_remote', 'utils/errors', 'thirdparty/2.2.0-sha1', 'thirdparty/crc32', 'thirdparty/deflate.min', 'thirdparty/inflate.min', "workers/worker_messages"], function(clone, commit, init, pull, push, branch, checkout, Conditions, FileObjectStore, SmartHttpRemote, errutils){
     
-    /** @exports api */
+    /** @exports GitApi */
     var api = {
 
-        /** @constant {Number} Indicates an unexpected error in the HTML5 file system. */
+        /** @desc Indicates an unexpected error in the HTML5 file system. */
         FILE_IO_ERROR: errutils.FILE_IO_ERROR,
-        /** @constant {Number} Indicates an unexpected ajax error when trying to make a request */
+        /** @desc Indicates an unexpected ajax error when trying to make a request */
         AJAX_ERROR: errutils.AJAX_ERROR, 
-        /** @constant {Number} trying to clone into a non-empty directory */
+        /** @desc trying to clone into a non-empty directory */
         CLONE_DIR_NOT_EMPTY: errutils.CLONE_DIR_NOT_EMPTY,
-        /** @constant {Number} Trying to clone into directory that contains a .git directory that already contains objects */
+        /** @desc Trying to clone into directory that contains a .git directory that already contains objects */
         CLONE_GIT_DIR_IN_USE: errutils.CLONE_GIT_DIR_IN_USE,
-        /** @constant {Number} No branch found with the name given.  */
+        /** @desc No branch found with the name given.  */
         REMOTE_BRANCH_NOT_FOUND: errutils.REMOTE_BRANCH_NOT_FOUND,
-        /** @constant {Number} A pull was attempted that would require a non-fast-forward. The API only supports fast forward merging at the moment. */
+        /** @desc A pull was attempted that would require a non-fast-forward. The API only supports fast forward merging at the moment. */
         PULL_NON_FAST_FORWARD: errutils.PULL_NON_FAST_FORWARD,
-        /** @constant {Number} A pull was attempted but the local git repo is up to date */
+        /** @desc A pull was attempted but the local git repo is up to date */
         PULL_UP_TO_DATE: errutils.PULL_UP_TO_DATE,
-        /** @constant {Number} A commit was attempted but the local git repo has no new changes to commit */
+        /** @desc A commit was attempted but the local git repo has no new changes to commit */
         COMMIT_NO_CHANGES: errutils.COMMIT_NO_CHANGES,
-        /** @constant {Number} A push was attempted but the remote repo is up to date. */
+        /** @desc A push was attempted but the remote repo is up to date. */
         PUSH_NO_CHANGES: errutils.PUSH_NO_CHANGES,
-        /** @constant {Number} A push was attempted but the remote has new commits that the local repo doesn't know about. 
+        /** @desc A push was attempted but the remote has new commits that the local repo doesn't know about. 
          * You would normally do a pull and merge remote changes first. Unfortunately, this isn't possible with this API. 
          * As a workaround, you could create and checkout a new branch and then do a push. */
         PUSH_NON_FAST_FORWARD: errutils.PUSH_NON_FAST_FORWARD,
-        /** @constant {Number} Indicates an unexpected problem retrieving objects */
+        /** @desc Indicates an unexpected problem retrieving objects */
         OBJECT_STORE_CORRUPTED: errutils.OBJECT_STORE_CORRUPTED,
-        /** @constant {Number} A pull was attempted with uncommitted changed in the working copy */
+        /** @desc A pull was attempted with uncommitted changed in the working copy */
         UNCOMMITTED_CHANGES: errutils.UNCOMMITTED_CHANGES,
-        /** @constant {Number} 401 when attempting to make a request. */
+        /** @desc 401 when attempting to make a request. */
         HTTP_AUTH_ERROR: errutils.HTTP_AUTH_ERROR,
 
-        /** @constant {Number} The branch doesn't follow valid git branch naming rules. */
+        /** @desc The branch doesn't follow valid git branch naming rules. */
         BRANCH_NAME_NOT_VALID: errutils.BRANCH_NAME_NOT_VALID,
-        /** @constant {Number} Trying to push a repo without a valid remote. 
+        /** @desc Trying to push a repo without a valid remote. 
          * This can happen if it's a first push to blank repo and a url wasn't specified as one of the options. */
         PUSH_NO_REMOTE: errutils.PUSH_NO_REMOTE,
         
@@ -8861,6 +9001,7 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
          * that a depth of 1 always be given since the api does not currently give a way 
          * to access the commit history of a repo.  
          * 
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry to clone the repo into
          * @param {String} [options.branch=HEAD] the name of the remote branch to clone.
          * @param {String} options.url the url of the repo to clone from
@@ -8868,7 +9009,7 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
          * @param {String} [options.username] User name to authenticate with if the repo supports basic auth
          * @param {String} [options.password] password to authenticate with if the repo supports basic auth
          * @param {progressCallback} [options.progress] callback that gets notified of progress events.
-         * @param {cloneSuccessCallback} success callback that gets notified after the clone is completed successfully
+         * @param {successCallback} success callback that gets notified after the clone is completed successfully
          * @param {errorCallback} [error] callback that gets notified if there is an error
          */
         clone : function(options, success, error){
@@ -8893,12 +9034,13 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
          * Does a pull from the url the local repo was cloned from. Will only succeed for fast-forward pulls.
          * If a merge is required, it calls the error callback 
          * 
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry that contains a local git repo to pull updates into
-         * @param {String} options.username User name to authenticate with if the repo supports basic auth
-         * @param {String} options.password password to authenticate with if the repo supports basic auth
-         * @param {progressCallback} options.progress callback that gets notified of progress events.
-         * @param {pullSuccessCallback} success callback that gets notified after the pull is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error
+         * @param {String} [options.username] User name to authenticate with if the repo supports basic auth
+         * @param {String} [options.password] password to authenticate with if the repo supports basic auth
+         * @param {progressCallback} [options.progress] callback that gets notified of progress events.
+         * @param {successCallback} success callback that gets notified after the pull is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error
          */
         pull : function(options, success, error){
             var objectStore = new FileObjectStore(options.dir);
@@ -8918,17 +9060,19 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
         /**
          * Looks for changes in the working directory since the last commit and adds them to the local git repo history. Some caveats
          *  
-         *  - This is does an implicit "git add" of all changes including previously untracked files. 
-         *  - A Tree created by this command will only have two file modes: 40000 for folders (subtrees) and 100644 for files (blobs).
-         *  - Ignores any rules in .gitignore
-         *  - Will blow-up on a working copy with too many files. On my 2010 Macbook Pro running Chrome 28, it's in the range of 10000 files. 
-         * 
+         *  <ul>
+         *  <li>This is does an implicit "git add" of all changes including previously untracked files.</li>
+         *  <li>A Tree created by this command will only have two file modes: 40000 for folders (subtrees) and 100644 for files (blobs).</li>
+         *  <li>Ignores any rules in .gitignore</li>
+         *  </ul>
+         *
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry to look for changes and commit them to the .git subdirectory in the same driectory
          * @param {String} options.name The name that will appear in the commit log as the name of the author and committer. 
          * @param {String} options.email The email that will appear in the commit log as the email of the author and committer.
          * @param {String} options.commitMsg The message that will appear in the commit log
-         * @param {pullSuccessCallback} success callback that gets notified after the commit is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error
+         * @param {successCallback} success callback that gets notified after the commit is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error
          * 
          */
         commit : function(options, success, error){
@@ -8948,13 +9092,14 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
          * Pushes local commits to a remote repo. This is usually the remote repo the local repo was cloned from. It can also be 
          * the initial push to a blank repo.
          * 
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry to push changes from
          * @param {String} [options.url] the remote url to push changes to. This defaults to the url the repo was cloned from. 
-         * @param {String} options.username User name to authenticate with if the repo supports basic auth
-         * @param {String} options.password password to authenticate with if the repo supports basic auth
-         * @param {progressCallback} options.progress callback that gets notified of progress events.
-         * @param {pushSuccessCallback} success callback that gets notified after the push is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error
+         * @param {String} [options.username] User name to authenticate with if the repo supports basic auth
+         * @param {String} [options.password] password to authenticate with if the repo supports basic auth
+         * @param {progressCallback} [options.progress] callback that gets notified of progress events.
+         * @param {successCallback} success callback that gets notified after the push is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error
          */
         push : function(options, success, error){
             var objectStore = new FileObjectStore(options.dir);
@@ -8963,6 +9108,7 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
                         objectStore: objectStore, 
                         dir: options.dir, 
                         url: options.url,
+                        remove: options.remove,
                         username: options.username,
                         password: options.password,
                         progress: options.progress
@@ -8973,10 +9119,11 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
         /**
          * Creates a local branch. You will need to call the checkout api command to check it out. 
          * 
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry that contains a local git repo
          * @param {String} options.branch Name of the branch to create
-         * @param {pushSuccessCallback} success callback that gets notified after the push is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error
+         * @param {successCallback} success callback that gets notified after the push is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error
          * 
          */
         branch: function(options, success, error){
@@ -8993,10 +9140,11 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
         /**
          * Checks out a local branch. 
          * 
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry that contains a local git repo
          * @param {String} options.branch Name of the branch to checkout
-         * @param {pushSuccessCallback} success callback that gets notified after the push is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error 
+         * @param {successCallback} success callback that gets notified after the push is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error 
          */
         checkout: function(options, success, error){
             var objectStore = new FileObjectStore(options.dir);
@@ -9013,9 +9161,10 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
          * Looks in the working directory for uncommitted changes. This is faster than attempting a 
          * commit and having it fail.
          * 
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry that contains a local git repo
-         * @param {pushSuccessCallback} success callback that gets notified after the push is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error  
+         * @param {successCallback} success callback that gets notified after the push is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error  
          */
         checkForUncommittedChanges: function(options, success, error){
             var objectStore = new FileObjectStore(options.dir);
@@ -9026,9 +9175,10 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
         /**
          * Retrieves the name of the currently checked out local branch . 
          * 
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry that contains a local git repo
-         * @param {pushSuccessCallback} success callback that gets notified after the push is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error  
+         * @param {successCallback} success callback that gets notified after the push is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error  
          */
         getCurrentBranch : function(options, success, error){
             var objectStore = new FileObjectStore(options.dir);
@@ -9041,9 +9191,10 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
         /**
          * Gets a list of all local branches.
          * 
+         * @param {Object} options 
          * @param {DirectoryEntry} options.dir an HTML5 DirectoryEntry that contains a local git repo
-         * @param {pushSuccessCallback} success callback that gets notified after the push is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error  
+         * @param {successCallback} success callback that gets notified after the push is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error  
          */
         getLocalBranches : function(options, success, error){
             var objectStore = new FileObjectStore(options.dir);
@@ -9054,11 +9205,12 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
         /**
          * Gets a list of all remote branches. 
          * 
+         * @param {Object} options 
          * @param {String} options.url url of a remote git repo
-         * @param {String} options.username User name to authenticate with if the repo supports basic auth
-         * @param {String} options.password password to authenticate with if the repo supports basic auth
-         * @param {pushSuccessCallback} success callback that gets notified after the push is completed successfully.
-         * @param {errorCallback} error callback that gets notified if there is an error  
+         * @param {String} [options.username] User name to authenticate with if the repo supports basic auth
+         * @param {String} [options.password] password to authenticate with if the repo supports basic auth
+         * @param {successCallback} success callback that gets notified after the push is completed successfully.
+         * @param {errorCallback} [error] callback that gets notified if there is an error  
          */
         getRemoteBranches : function(options, success, error){
             var remote = SmartHttpRemote(null, null, options.url, options.username, options.password, error);
@@ -9071,96 +9223,74 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
                 });
                 success(remoteBranches);
             });
+        },
+        getProjectRefs: function (options, success, error) {
+            success = success || function () {
+                };
+            error = error || function () {
+                };
+            var objectStore = new FileObjectStore(options.dir);
+            objectStore.init(function () {
+                var remoteProjectURL = options.url;
+                var username = options.username;
+                var password = options.password;
+
+                var remote = new SmartHttpRemote(objectStore, "refs/heads", remoteProjectURL, username, password);
+                remote.fetchProjectRefs(function () {
+                    var remoteRefs = remote.getProjectRefs();
+                    success(remoteRefs);
+                    return remoteRefs;
+                })
+            });
+        },
+        getProjectLockRefs: function (options, success, error) {
+            success = success || function () {
+                };
+            error = error || function () {
+                };
+            var objectStore = new FileObjectStore(options.dir);
+            objectStore.init(function () {
+                var remoteProjectURL = options.url;
+                var username = options.username;
+                var password = options.password;
+                var projectName = options.projectName;
+
+                var remote = new SmartHttpRemote(objectStore, "refs/heads", remoteProjectURL, username, password);
+                remote.fetchLockRefs(projectName, function () {
+                    var remoteRefs = remote.getProjectLockRefs();
+                    success(remoteRefs);
+                    return remoteRefs;
+                })
+            });
         }
+
+        /**
+         * error callback that gets notified if there is an error  
+         * @callback errorCallback
+         * @param {Object} err Error data object
+         * @param {Number} err.type The type of error. Should be one of the error constants in the api like {@link FILE_IO_ERROR}
+         * @param {String} err.msg An explanation of the error in English. 
+         */
+
+         /**
+         * progress callback that gets notified of the progress of various operaions  
+         * @callback progressCallback
+         * @param {Object} progress Progress data object
+         * @param {Number} progress.pct a number between 1-100 that indicates the percentage of the operation that is complete.
+         * @param {String} progress.msg An description of the current state of the operation in English. 
+         */
+
+         /**
+          * success callback that gets notified when an operation completes successfully. 
+          * @callback successCallback
+          */
 
     }
     return api;
 });
-define('workers/api-worker',['api', 'utils/errors', 'workers/worker_messages'], function(GitLite, errutils){
-
-    self.requestFileSystem = self.requestFileSystem || self.webkitRequestFileSystem;
-
-    var convertToDirEntry = function(dir, success, error){
-        self.requestFileSystem(PERSISTENT, 5 * 1024 * 1024 * 1024, function(fs){
-            fs.root.getDirectory(dir, {create: false}, success, error);
-        }, error);
-    };
-
-    return function(){
-        onmessage = function(evt){
-            var msg = evt.data;
-            var id = evt.data.id;
-            var scrubArgs = function(args){
-                for (var i = 0; i < args.length; i++){
-                    args[i] = args[i].fullPath || args[i];
-                }
-            }
-            var successCallback = function(){
-                var args = Array.prototype.slice.call(arguments);
-                scrubArgs(args);
-                postMessage({id: id, type: GitLiteWorkerMessages.SUCCESS, args: args});
-                //self.close();
-            }
-
-            var errCallback = function(e){
-                postMessage({id: id, type: GitLiteWorkerMessages.ERROR, error:e});
-                //self.close();
-            }
-            var progressCallback;
-            if (msg.options.progress){
-                progressCallback = function(){
-                    var args = Array.prototype.slice.call(arguments);
-                    postMessage({id: id, type: GitLiteWorkerMessages.PROGRESS, args: args});
-                }
-                msg.options.progress = progressCallback;
-            }
-            var ferror = errutils.fileErrorFunc(errCallback);
-
-            var doApiCall = function(func){
-                convertToDirEntry(msg.options.dir, function(dirEntry){
-                    msg.options.dir = dirEntry;
-                    func.call(null, msg.options, successCallback, errCallback);
-                }, ferror);
-            }
-
-            switch(msg.type){
-                
-                case GitLiteWorkerMessages.API_CALL_CLONE:
-                    doApiCall(GitLite.clone);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_COMMIT:
-                    doApiCall(GitLite.commit);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_PULL:
-                    doApiCall(GitLite.pull);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_PUSH:
-                    doApiCall(GitLite.push);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_BRANCH:
-                    doApiCall(GitLite.branch);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_CHECKOUT:
-                    doApiCall(GitLite.checkout);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_UNCOMMITTED:
-                    doApiCall(GitLite.checkForUncommittedChanges);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_CURRENT_BRANCH:
-                    doApiCall(GitLite.getCurrentBranch);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_LOCAL_BRANCHES:
-                    doApiCall(GitLite.getLocalBranches);
-                    break;
-                case GitLiteWorkerMessages.API_CALL_REMOTE_BRANCHES:
-                    doApiCall(GitLite.getRemoteBranches);
-                    break;
-            }
-        }
-    }
-});    //The modules for your project will be inlined above
+    //The modules for your project will be inlined above
     //this snippet. Ask almond to synchronously require the
     //module value for 'main' here and return it as the
     //value to use for the public API for the built file.
-    return require('workers/api-worker');
+    return require('api');
 }));

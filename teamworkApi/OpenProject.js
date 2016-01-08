@@ -16,7 +16,7 @@ define(function (require, exports, module) {
     var TeamworkConfiguration   = require("../preferences/TeamworkConfiguration");
     var ProjectJSONBuilder      = require("./ProjectJSONBuilder");
     var LockElement             = require("./LockElement");
-    var GitApi                  = require("../htmlGit");
+    var GitApi                  = require("../StarGit/api-built");
     var ProgressDialog          = require("../dialogs/ProgressDialog");
     var TeamworkView            = require("../teamworkView/TeamworkView");
 
