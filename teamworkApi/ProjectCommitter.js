@@ -19,10 +19,10 @@ define(function(require, exports, module) {
     //Functions
     function commitProjectChanges() {
         var projectName = TeamworkBase.getTeamworkProjectName();
-        var workingDirPromise = getProjectWorkDir(projectName);
-        var currentProjectPromise = loadCurrentProjectFromServer(workingDirPromise, projectName);
+        var workingDirPromise = getProjectWorkDir("Project");
+        var currentProjectPromise = loadCurrentProjectFromServer(workingDirPromise, "Project");
         var commitMsg = 'Committing Project-Changes for "' + projectName + '"';
-        var mergePromise = TeamworkBase.mergeProjectWithLocalChanges(currentProjectPromise, commitMsg, true);
+        var mergePromise = TeamworkBase.mergeProjectWithLocalChanges(currentProjectPromise, commitMsg, true, true, true);
         var pushPromise = TeamworkBase.pushToServer(mergePromise, "Committing Project-Changes...");
         notifyUserAndCleanAfterwards(pushPromise, projectName);
     }
@@ -30,8 +30,8 @@ define(function(require, exports, module) {
     function getProjectWorkDir(projectName) {
         var promise = new $.Deferred();
         var localPath = TeamworkBase.loadLocalWorkingPath(projectName);
-        var workingDir = FileSystem.getDirectoryForPath(localPath);
-        workingDir.unlink();
+        //var workingDir = FileSystem.getDirectoryForPath(localPath);
+        //workingDir.unlink();
         TeamworkBase.getProjectsRootDir(localPath, function (workingDir) {
             promise.resolve(workingDir);
         });
@@ -41,10 +41,11 @@ define(function(require, exports, module) {
     function loadCurrentProjectFromServer(promise, projectName) {
         var nextPromise = new $.Deferred();
         promise.done(function(workingDir) {
-            var clonePromise  = TeamworkBase.cloneRepoFromServer(workingDir, projectName);
+            nextPromise.resolve(workingDir, projectName);
+            /*var clonePromise  = TeamworkBase.cloneRepoFromServer(workingDir, projectName);
             clonePromise.done(function(workingDir, projectName) {
                 nextPromise.resolve(workingDir, projectName);
-            });
+            });*/
         });
         return nextPromise;
     }
@@ -53,8 +54,8 @@ define(function(require, exports, module) {
         promise.done(function(workingDir) {
             TeamworkView.addProjectCommitEvent(projectName, GitConfiguration.getUsername());
             Dialogs.cancelModalDialogIfOpen('modal');
-            workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
-            workingDir.unlink();
+            //workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+            //workingDir.unlink();
             $(exports).triggerHandler('projectCommitted', [projectName]);
         });
     }

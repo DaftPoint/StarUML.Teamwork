@@ -150,8 +150,8 @@ define(function (require, exports, module) {
             }
             GitApi.getProjectLockRefs(options, function(locks) {
                 executeUpdateLockInfo(locks, projectName);
-                workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
-                workingDir.moveToTrash();
+                //workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                //workingDir.moveToTrash();
             });
         });
     }

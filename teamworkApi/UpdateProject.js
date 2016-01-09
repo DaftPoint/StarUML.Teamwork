@@ -19,39 +19,39 @@ define(function(require, exports, module) {
     //Functions
     function updateProject() {
         var projectName = TeamworkBase.getTeamworkProjectName();
-        var workingDirPromise = getProjectWorkDir(projectName);
-        var currentProjectPromise = loadCurrentProjectFromServer(workingDirPromise, projectName);
+        var workingDirPromise = getProjectWorkDir("Project");
+        var currentProjectPromise = loadCurrentProjectFromServer(workingDirPromise, "Project");
         var mergePromise = mergeProjectWithLocalChanges(currentProjectPromise);
-        TeamworkBase.loadProjectFromFragments(mergePromise, projectName);
+        TeamworkBase.loadProjectFromFragments(mergePromise, "Project");
         notifyUserAfterwards(mergePromise, projectName);
     }
 
     function mergeProjectWithLocalChanges(promise) {
         var nextPromise = new $.Deferred();
         promise.done(function(workingDir, projectName) {
-            try {
-                TeamworkBase.splitProjectInSingleFiles(false, projectName, false);
-            } catch(error) {
-                nextPromise.reject();
-            }
-            var options = {
-                dir: workingDir,
-                name: TeamworkConfiguration.getUsername(),
-                email: TeamworkConfiguration.getUsername() + '@noreply.com',
-                commitMsg: "Committing local changes"
-            };
-            GitApi.commit(options, function() {
-                    var progressCallback = ProgressDialog.showProgress("Updating Project", "Connecting to server...");
-                    options = TeamworkBase.getDefaultGitOptions(workingDir, undefined, progressCallback);
-                    GitApi.pull(options, function() {
-                        nextPromise.resolve(workingDir, projectName);
-                    },
-                    function(error) {
-                        TeamworkBase.handleGitApiError(workingDir, error)
-                    });
+            var progressCallback = ProgressDialog.showProgress("Updating Project", "Connecting to server...");
+            var options = TeamworkBase.getDefaultGitOptions(workingDir, undefined, progressCallback);
+            GitApi.pull(options, function() {
+                try {
+                    TeamworkBase.splitProjectInSingleFiles(false, projectName, true, true, false);
+                } catch(error) {
+                    nextPromise.reject();
+                }
+                options = {
+                    dir: workingDir,
+                    name: TeamworkConfiguration.getUsername(),
+                    email: TeamworkConfiguration.getUsername() + '@noreply.com',
+                    commitMsg: "Committing local changes"
+                };
+                GitApi.commit(options, function() {
+                    nextPromise.resolve(workingDir, projectName);
+                },
+                function (err) {
+                    TeamworkBase.handleGitApiError(workingDir, err);
+                });
             },
-            function (err) {
-                handleGitApiError(workingDir, err);
+            function(error) {
+                TeamworkBase.handleGitApiError(workingDir, error)
             });
         });
         return nextPromise;
@@ -60,8 +60,6 @@ define(function(require, exports, module) {
     function getProjectWorkDir(projectName) {
         var promise = new $.Deferred();
         var localPath = TeamworkBase.loadLocalWorkingPath(projectName);
-        var workingDir = FileSystem.getDirectoryForPath(localPath);
-        workingDir.unlink();
         TeamworkBase.getProjectsRootDir(localPath, function (workingDir) {
             promise.resolve(workingDir);
         });
@@ -71,10 +69,11 @@ define(function(require, exports, module) {
     function loadCurrentProjectFromServer(promise, projectName) {
         var nextPromise = new $.Deferred();
         promise.done(function(workingDir) {
-            var clonePromise  = TeamworkBase.cloneRepoFromServer(workingDir, projectName);
+            nextPromise.resolve(workingDir, projectName);
+            /*var clonePromise  = TeamworkBase.cloneRepoFromServer(workingDir, projectName);
             clonePromise.done(function(workingDir, projectName) {
                 nextPromise.resolve(workingDir, projectName);
-            });
+            });*/
         });
         return nextPromise;
     }

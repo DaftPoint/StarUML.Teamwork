@@ -10,6 +10,7 @@ define(function (require, exports, module) {
     var Dialogs             = app.getModule('dialogs/Dialogs');
     var ProjectManager      = app.getModule("engine/ProjectManager");
     var Repository          = app.getModule("core/Repository");
+    var FileSystem          = app.getModule("filesystem/FileSystem");
 
     //Imports
     var TeamworkBase            = require("./TeamworkBase");
@@ -65,6 +66,9 @@ define(function (require, exports, module) {
         promise.done(function (buttonId, projectName) {
             if (buttonId === Dialogs.DIALOG_BTN_OK) {
                 TeamworkBase.clearChangedIds();
+                var dir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+                dir.unlink();
+                dir.create();
                 var clonePromise  = TeamworkBase.cloneRepoFromServer(workingDir, projectName);
                 clonePromise.done(function(workingDir, projectName) {
                     nextPromise.resolve(workingDir, projectName);

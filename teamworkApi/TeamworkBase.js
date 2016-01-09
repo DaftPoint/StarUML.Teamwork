@@ -76,8 +76,8 @@ define(function (require, exports, module) {
     }
 
     function handleGitApiError(workingDir, error) {
-        workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
-        workingDir.unlink();
+        // workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
+        // workingDir.unlink();
         Dialogs.cancelModalDialogIfOpen('modal');
         Toast.error(error);
     }
@@ -117,11 +117,11 @@ define(function (require, exports, module) {
         return promise;
     }
 
-    function mergeProjectWithLocalChanges(promise, commitMsg, onlyChangedElements) {
+    function mergeProjectWithLocalChanges(promise, commitMsg, onlyChangedElements, throwError) {
         var nextPromise = new $.Deferred();
         promise.done(function(workingDir, projectName) {
             try {
-                splitProjectInSingleFiles(false, projectName, onlyChangedElements);
+                splitProjectInSingleFiles(false, projectName, onlyChangedElements, throwError);
             } catch(error) {
                 nextPromise.reject();
             }
@@ -147,14 +147,18 @@ define(function (require, exports, module) {
         return localPath + "/" + projectName + "/";
     }
 
-    function splitProjectInSingleFiles(recreateExistingDirectory, projectName, onlyChangedElements) {
+    function splitProjectInSingleFiles(recreateExistingDirectory, projectName, onlyChangedElements, overwriteAllowed, throwError) {
         var idMap = Repository.getIdMap();
         var changedIds;
         if(onlyChangedElements) {
             changedIds = getChangedElementIDs();
             if(Object.keys(changedIds).length === 0) {
-                TeamworkView.addTeamworkItem("Error", "No changes to commit", new Date().toJSON().slice(0, 19).replace("T", " "), TeamworkConfiguration.getUsername());
-                throw new Error("No changes to commit");
+                if(throwError) {
+                    TeamworkView.addTeamworkItem("Error", "No changes to commit", new Date().toJSON().slice(0, 19).replace("T", " "), TeamworkConfiguration.getUsername());
+                    throw new Error("No changes to commit");
+                } else {
+                    return;
+                }
             }
         }
         var fragmentDirectory = getProjectPath(projectName);
@@ -170,29 +174,39 @@ define(function (require, exports, module) {
             iteratorMap = idMap;
         }
         for (var key in iteratorMap) {
-            var element = idMap[key];
-            var tempOwnedElements = element.ownedElements;
-            var tempOwnedViews = element.ownedViews;
-            var tempSubViews = element.subViews;
-            if(tempOwnedElements != null && tempOwnedElements !== undefined) {
-                element.ownedElements = null;
-            }
-            if(tempOwnedViews != null && tempOwnedViews !== undefined) {
-                element.ownedViews = null;
-            }
-            if(tempSubViews != null && tempSubViews !== undefined) {
-                element.subViews = null;
-            }
-            ProjectManager.exportToFile(element, buildFilePathForElement(fragmentDirectory, key));
-            if(tempOwnedElements != null && tempOwnedElements !== undefined) {
-                element.ownedElements = tempOwnedElements;
-            }
-            if(tempOwnedViews != null && tempOwnedViews !== undefined) {
-                element.ownedViews = tempOwnedViews;
-            }
-            if(tempSubViews != null && tempSubViews !== undefined) {
-                element.subViews = tempSubViews;
-            }
+
+            var filePathForElement = buildFilePathForElement(fragmentDirectory, key);
+            var file = FileSystem.getFileForPath(filePathForElement);
+
+            file.exists(function(exists) {
+                if(!exists || overwriteAllowed) {
+                    var element = idMap[key];
+                    var tempOwnedElements = element.ownedElements;
+                    var tempOwnedViews = element.ownedViews;
+                    var tempSubViews = element.subViews;
+                    if(tempOwnedElements != null && tempOwnedElements !== undefined) {
+                        element.ownedElements = null;
+                    }
+                    if(tempOwnedViews != null && tempOwnedViews !== undefined) {
+                        element.ownedViews = null;
+                    }
+                    if(tempSubViews != null && tempSubViews !== undefined) {
+                        element.subViews = null;
+                    }
+
+                    ProjectManager.exportToFile(element, filePathForElement);
+
+                    if(tempOwnedElements != null && tempOwnedElements !== undefined) {
+                        element.ownedElements = tempOwnedElements;
+                    }
+                    if(tempOwnedViews != null && tempOwnedViews !== undefined) {
+                        element.ownedViews = tempOwnedViews;
+                    }
+                    if(tempSubViews != null && tempSubViews !== undefined) {
+                        element.subViews = tempSubViews;
+                    }
+                }
+            })
         }
     }
 
@@ -281,10 +295,10 @@ define(function (require, exports, module) {
                 masterPromise.done(function() {
                     var _project = ProjectJSONBuilder.buildProjectFromFragments(fragments);
                     openProjectFromJsonData(_project);
-                    var options = getDefaultGitOptions(workingDir, null, null, null, workDirName);
+                    var options = getDefaultGitOptions(workingDir, undefined, undefined, projectName);
                     GitApi.getProjectLockRefs(options, function(locks) {
                         LockElement.updateProjectLockInfo(locks);
-                        directory.unlink();
+                        //directory.unlink();
                         nextPromise.resolve(projectName);
                     });
                 });

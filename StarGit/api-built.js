@@ -6817,13 +6817,12 @@ define('formats/smart_http_remote',['formats/upload_pack_parser', 'utils/errors'
             xhr.onload = function() {
 
                 var binaryData = xhr.response;
-                if (haveRefs && String.fromCharCode.apply(null, new Uint8Array(binaryData, 4, 3)) == "NAK") {
+                if (haveRefs && moreHaves && moreHaves.length > 0 && String.fromCharCode.apply(null, new Uint8Array(binaryData, 4, 3)) == "NAK") {
                     if (moreHaves) {
                         thisRemote.store._getCommitGraph(moreHaves, 32, function(commits, next) {
                             thisRemote.fetchRef(wantRefs, commits, depth, next, callback, noCommon);
                         });
-                    }
-                    else if (noCommon){
+                    } else if (noCommon){
                         noCommon();
                     }
                 } else {
@@ -7829,6 +7828,7 @@ define('commands/pull',['commands/treemerger', 'commands/object2file', 'commands
 
         var dir = options.dir,
             store = options.objectStore,
+            url   = options.url,
             username = options.username,
             password = options.password,
             progress = options.progress || function(){},
@@ -7849,7 +7849,7 @@ define('commands/pull',['commands/treemerger', 'commands/object2file', 'commands
 
         progress({pct: 0, msg: 'Checking for uncommitted changes...'});
         Conditions.checkForUncommittedChanges(dir, store, function(repoConfig){
-            var url = repoConfig.url;
+            //var url = repoConfig.url;//TODO: Check if other way is possible
 
             remote = new SmartHttpRemote(store, "origin", url, username, password, error);
         
@@ -7930,8 +7930,7 @@ define('commands/pull',['commands/treemerger', 'commands/object2file', 'commands
                                                     });
                                                 }); 
                                             });
-                                        }
-                                        else{
+                                        } else {
                                             nonFastForward();
                                         }
                                     }, nonFastForward, fetchProgress);
@@ -9049,6 +9048,7 @@ define('api',['commands/clone', 'commands/commit', 'commands/init', 'commands/pu
                 pull({
                         dir: options.dir, 
                         objectStore: objectStore,
+                        url: options.url,
                         username: options.username,
                         password: options.password,
                         progress: options.progress
