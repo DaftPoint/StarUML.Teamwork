@@ -63,7 +63,8 @@ define(function (require, exports, module) {
         UNLOCK_ELEMENT: "Element unlocked",
         OPEN_PROJECT: "Project loaded",
         UPDATE_LOCK_INFO: "Updating Lock-Info",
-        COMMIT_PROJECT: "Project committed"
+        COMMIT_PROJECT: "Project committed",
+        UPDATE_PROJECT: "Project updated"
     };
 
     function addTeamworkItem(event, message, time, user) {
@@ -104,6 +105,11 @@ define(function (require, exports, module) {
     function addProjectCommitEvent(projectName, user) {
         var message = "Project changes committed: " + projectName;
         addTeamworkItem(EVENTS.COMMIT_PROJECT, message, new Date().toJSON().slice(0, 19).replace("T", " "), user);
+    }
+
+    function addProjectUpdateEvent(projectName, user) {
+        var message = "Project updated: " + projectName;
+        addTeamworkItem(EVENTS.UPDATE_PROJECT, message, new Date().toJSON().slice(0, 19).replace("T", " "), user);
     }
 
     function show() {
@@ -188,4 +194,5 @@ define(function (require, exports, module) {
     exports.addUpdateLockInfoEvent = addUpdateLockInfoEvent;
     exports.addTeamworkItem = addTeamworkItem;
     exports.addProjectCommitEvent = addProjectCommitEvent;
+    exports.addProjectUpdateEvent = addProjectUpdateEvent;
 });

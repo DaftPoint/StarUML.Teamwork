@@ -15,7 +15,7 @@ define(function(require, exports, module) {
     var TeamworkView            = require("./../teamworkView/TeamworkView");
     var TeamworkBase            = require("./../teamworkApi/TeamworkBase");
     var ProjectCommitter        = require("./../teamworkApi/ProjectCommitter");
-    var SaveProject             = require("./../teamworkApi/SaveProject");
+    var SaveProject             = require("./../teamworkApi/CreateProject");
 
     function updateTitlebar(projectName) {
         var filename = projectName,

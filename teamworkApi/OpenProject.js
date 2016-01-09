@@ -14,14 +14,11 @@ define(function (require, exports, module) {
     //Imports
     var TeamworkBase            = require("./TeamworkBase");
     var TeamworkConfiguration   = require("../preferences/TeamworkConfiguration");
-    var ProjectJSONBuilder      = require("./ProjectJSONBuilder");
-    var LockElement             = require("./LockElement");
     var GitApi                  = require("../StarGit/api-built");
     var ProgressDialog          = require("../dialogs/ProgressDialog");
     var TeamworkView            = require("../teamworkView/TeamworkView");
 
     //Constants
-    var NO_PROJECT_DATA_FOUND_MESSAGE           = "No Project-Data found!";
     var CONFIRM_MESSAGE_LOADING_PROJECT         = "Are you sure? Current Project will be closed! Select Project to load...";
     var PROJECT_LOADING_CANCELLATION_MESSAGE    = "Project-Loading cancelled";
 
@@ -46,7 +43,8 @@ define(function (require, exports, module) {
             });
         });
         var selectionClonePromise = selectProjectToClone(nextPromise);
-        openClonedProject(selectionClonePromise);
+        var loadProjectPromise = TeamworkBase.loadProjectFromFragments(selectionClonePromise, "Project");
+        cleanAndNotifyUser(loadProjectPromise);
     }
 
     function selectProjectToClone(promise) {
@@ -78,15 +76,12 @@ define(function (require, exports, module) {
         return nextPromise;
     }
 
-    function openClonedProject(promise) {
-        promise.done(function(workingDir, projectName) {
-            var promise = loadProjectFromFragments("Project", workingDir);
-            promise.done(function() {
-                Dialogs.cancelModalDialogIfOpen('modal');
-                Toast.info("Opening Project...");
-                TeamworkView.addOpenProjectEvent(projectName, TeamworkConfiguration.getUsername());
-                $(exports).triggerHandler('teamworkProjectLoaded', [projectName]);
-            });
+    function cleanAndNotifyUser(promise) {
+        promise.done(function(projectName) {
+            Dialogs.cancelModalDialogIfOpen('modal');
+            Toast.info("Opening Project...");
+            TeamworkView.addOpenProjectEvent(projectName, TeamworkConfiguration.getUsername());
+            $(exports).triggerHandler('teamworkProjectLoaded', [projectName]);
         });
     }
 
@@ -96,40 +91,6 @@ define(function (require, exports, module) {
             options.push({text: item.name, value: item.name});
         });
         return options;
-    }
-
-    function openProjectFromJsonData(_project) {
-        ProjectManager.loadFromJson(_project);
-    }
-
-    function loadProjectFromFragments(projectName, workingDir) {
-        var promise = new $.Deferred();
-        TeamworkBase.cleanCurrentWork();
-        var directory = TeamworkBase.loadLocalWorkingDirectory(projectName);
-        directory.getContents(function (err, content, stats) {
-            if (err) {
-                Toast.error(NO_PROJECT_DATA_FOUND_MESSAGE);
-                throw err;
-            }
-            if (!content) {
-                return;
-            }
-            var fragmentPromise = ProjectJSONBuilder.loadFragmentsAsJsonObjects(content);
-            var fragments = fragmentPromise.fragments;
-            var masterPromise = fragmentPromise.masterPromise;
-
-            masterPromise.done(function() {
-                var _project = ProjectJSONBuilder.buildProjectFromFragments(fragments);
-                openProjectFromJsonData(_project);
-                var options = TeamworkBase.getDefaultGitOptions(workingDir, null, null, null, projectName);
-                GitApi.getProjectLockRefs(options, function(locks) {
-                    LockElement.updateProjectLockInfo(locks);
-                    directory.unlink();
-                    promise.resolve();
-                });
-            });
-        });
-        return promise;
     }
 
     //Backend

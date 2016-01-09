@@ -24,9 +24,12 @@ define(function (require, exports, module) {
     var GitApi                  = require("../StarGit/api-built");
     var ProgressDialog          = require("../dialogs/ProgressDialog");
     var TeamworkView            = require("../teamworkView/TeamworkView");
+    var LockElement             = require("./LockElement");
+    var ProjectJSONBuilder      = require("./ProjectJSONBuilder");
 
     //Constants
-    var PREFERENCE_LOCAL_PATH = "teamwork.server.local";
+    var PREFERENCE_LOCAL_PATH           = "teamwork.server.local";
+    var NO_PROJECT_DATA_FOUND_MESSAGE   = "No Project-Data found!";
 
     //Variables
     var _teamworkProjectName = null;
@@ -254,6 +257,40 @@ define(function (require, exports, module) {
                 _changedElementIDs[element._id] = element._id;
             }
         }
+    }function openProjectFromJsonData(_project) {
+        ProjectManager.loadFromJson(_project);
+    }
+
+    function loadProjectFromFragments(promise, workDirName) {
+        var nextPromise = new $.Deferred();
+        promise.done(function(workingDir, projectName) {
+            cleanCurrentWork();
+            var directory = loadLocalWorkingDirectory(workDirName);
+            directory.getContents(function (err, content, stats) {
+                if (err) {
+                    Toast.error(NO_PROJECT_DATA_FOUND_MESSAGE);
+                    throw err;
+                }
+                if (!content) {
+                    return;
+                }
+                var fragmentPromise = ProjectJSONBuilder.loadFragmentsAsJsonObjects(content);
+                var fragments = fragmentPromise.fragments;
+                var masterPromise = fragmentPromise.masterPromise;
+
+                masterPromise.done(function() {
+                    var _project = ProjectJSONBuilder.buildProjectFromFragments(fragments);
+                    openProjectFromJsonData(_project);
+                    var options = getDefaultGitOptions(workingDir, null, null, null, workDirName);
+                    GitApi.getProjectLockRefs(options, function(locks) {
+                        LockElement.updateProjectLockInfo(locks);
+                        directory.unlink();
+                        nextPromise.resolve(projectName);
+                    });
+                });
+            });
+        });
+        return nextPromise;
     }
 
     function removeChangedElementIdsAfterUndoOperation() {
@@ -297,4 +334,5 @@ define(function (require, exports, module) {
     exports.removeChangedElementIdsAfterUndoOperation = removeChangedElementIdsAfterUndoOperation;
     exports.isTeamworkProject = isTeamworkProject;
     exports.setTeamworkProject = setTeamworkProject;
+    exports.loadProjectFromFragments = loadProjectFromFragments;
 });

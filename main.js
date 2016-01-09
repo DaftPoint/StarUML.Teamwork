@@ -34,11 +34,11 @@ define(function (require, exports, module) {
     //# register commands
     CommandManager.register("Teamwork",             		CMD_TEAMWORK,           CommandManager.doNothing);
     CommandManager.register("Open Teamwork-Project...",     CMD_TEAMWORK_OPEN,      TeamworkCommandHandler.openProject);
-    CommandManager.register("Create Teamwork-Project", 	    CMD_TEAMWORK_CREATE,  	TeamworkCommandHandler.saveProject);
+    CommandManager.register("Create Teamwork-Project", 	    CMD_TEAMWORK_CREATE,  	TeamworkCommandHandler.createProject);
     CommandManager.register("Lock Teamwork-Project", 	    CMD_TEAMWORK_LOCK,  	TeamworkCommandHandler.lockWholeProject);
     CommandManager.register("Update Lock-Info", 	        CMD_UPDATE_LOCKS,  	    TeamworkCommandHandler.updateProjectLockInfo);
     CommandManager.register("Commit changes",  			    CMD_TEAMWORK_COMMIT,   	ProjectCommitter.commitProjectChanges);
-    CommandManager.register("Update Project",     		    CMD_TEAMWORK_UPDATE, 	CommandManager.doNothing);
+    CommandManager.register("Update Project",     		    CMD_TEAMWORK_UPDATE, 	TeamworkCommandHandler.updateProject);
     CommandManager.register("Configure Teamwork-Server",    CMD_TEAMWORK_CONFIGURE, TeamworkCommandHandler.handleConfigure);
 
     CommandManager.register("Lock Element",                 CMD_LOCK_ELEMENT,       Locking.lockElement);

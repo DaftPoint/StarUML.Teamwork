@@ -22,7 +22,7 @@ define(function (require, exports, module) {
     //Variables
     //Functions
 
-    function saveProject() {
+    function createProject() {
         var dlg = Dialogs.showInputDialog("Enter a name for the Project to create");
         dlg.done(function (buttonId, projectName) {
             if (buttonId === Dialogs.DIALOG_BTN_OK) {
@@ -31,10 +31,6 @@ define(function (require, exports, module) {
                 Toast.error("Creating Teamwork-Project cancelled");
             }
         });
-    }
-
-    function updateProject() {
-        throw "Not yet implemented";
     }
 
     function createNewProjectOnTeamworkServer(projectName) {
@@ -62,6 +58,5 @@ define(function (require, exports, module) {
     }
 
     //Backend
-    exports.saveTeamworkProject = saveProject;
-    exports.updateProject = updateProject;
+    exports.createTeamworkProject = createProject;
 });
