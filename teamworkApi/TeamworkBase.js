@@ -16,6 +16,7 @@ define(function (require, exports, module) {
     var Constants           = app.getModule("utils/Constants");
     var Repository      	= app.getModule("core/Repository");
     var FileUtils           = app.getModule("file/FileUtils");
+    var Async               = app.getModule("utils/Async");
 
     //Imports
     var PlatformFileSystem      = require("../file/PlatformFileSystem").PlatformFileSystem;
@@ -121,21 +122,25 @@ define(function (require, exports, module) {
         var nextPromise = new $.Deferred();
         promise.done(function(workingDir, projectName) {
             try {
-                splitProjectInSingleFiles(false, projectName, onlyChangedElements, throwError);
+                var splitPromise = splitProjectInSingleFiles(false, projectName, onlyChangedElements, throwError);
             } catch(error) {
                 nextPromise.reject();
             }
-            var options = {
-                dir: workingDir,
-                name: TeamworkConfiguration.getUsername(),
-                email: TeamworkConfiguration.getUsername() + '@noreply.com',
-                commitMsg: commitMsg
-            };
-            GitApi.commit(options, function() {
-                nextPromise.resolve(workingDir);
-            },
-            function (err) {
-                handleGitApiError(workingDir, err);
+            splitPromise.done(function(change) {
+                if(change != "NO_CHANGE") {
+                    var options = {
+                        dir: workingDir,
+                        name: TeamworkConfiguration.getUsername(),
+                        email: TeamworkConfiguration.getUsername() + '@noreply.com',
+                        commitMsg: commitMsg
+                    };
+                    GitApi.commit(options, function() {
+                        nextPromise.resolve(workingDir);
+                    },
+                    function (err) {
+                        handleGitApiError(workingDir, err);
+                    });
+                }
             });
         });
         return nextPromise;
@@ -148,6 +153,7 @@ define(function (require, exports, module) {
     }
 
     function splitProjectInSingleFiles(recreateExistingDirectory, projectName, onlyChangedElements, overwriteAllowed, throwError) {
+        var nextPromise = new $.Deferred();
         var idMap = Repository.getIdMap();
         var changedIds;
         if(onlyChangedElements) {
@@ -155,9 +161,11 @@ define(function (require, exports, module) {
             if(Object.keys(changedIds).length === 0) {
                 if(throwError) {
                     TeamworkView.addTeamworkItem("Error", "No changes to commit", new Date().toJSON().slice(0, 19).replace("T", " "), TeamworkConfiguration.getUsername());
+                    nextPromise.reject("NO_CHANGES");
                     throw new Error("No changes to commit");
                 } else {
-                    return;
+                    nextPromise.resolve("NO_CHANGES");
+                    return nextPromise;
                 }
             }
         }
@@ -173,7 +181,10 @@ define(function (require, exports, module) {
         } else {
             iteratorMap = idMap;
         }
-        for (var key in iteratorMap) {
+        var counterChangesDone = 0;
+        var counterRuns = 0;
+        var masterPromise = new $.Deferred();
+        for(var key in iteratorMap) {
 
             var filePathForElement = buildFilePathForElement(fragmentDirectory, key);
             var file = FileSystem.getFileForPath(filePathForElement);
@@ -195,6 +206,7 @@ define(function (require, exports, module) {
                     }
 
                     ProjectManager.exportToFile(element, filePathForElement);
+                    counterChangesDone++;
 
                     if(tempOwnedElements != null && tempOwnedElements !== undefined) {
                         element.ownedElements = tempOwnedElements;
@@ -206,8 +218,20 @@ define(function (require, exports, module) {
                         element.subViews = tempSubViews;
                     }
                 }
+                counterRuns++;
+                if(counterRuns == Object.keys(iteratorMap).length) {
+                    masterPromise.resolve();
+                }
             })
         }
+        masterPromise.done(function() {
+            if(counterChangesDone == 0) {
+                nextPromise.resolve("NO_CHANGES");
+            } else {
+                nextPromise.resolve();
+            }
+        });
+        return nextPromise;
     }
 
     function buildFilePathForElement(fragmentDirectory, id) {
@@ -295,6 +319,7 @@ define(function (require, exports, module) {
                 masterPromise.done(function() {
                     var _project = ProjectJSONBuilder.buildProjectFromFragments(fragments);
                     openProjectFromJsonData(_project);
+                    setTeamworkProjectName(projectName);
                     var options = getDefaultGitOptions(workingDir, undefined, undefined, projectName);
                     GitApi.getProjectLockRefs(options, function(locks) {
                         LockElement.updateProjectLockInfo(locks);

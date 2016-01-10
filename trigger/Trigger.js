@@ -16,6 +16,8 @@ define(function(require, exports, module) {
     var TeamworkBase            = require("./../teamworkApi/TeamworkBase");
     var ProjectCommitter        = require("./../teamworkApi/ProjectCommitter");
     var SaveProject             = require("./../teamworkApi/CreateProject");
+    var LockElement             = require("./../teamworkApi/LockElement");
+    var ElementLocker           = require("./../locking/ElementLocker");
 
     function updateTitlebar(projectName) {
         var filename = projectName,
@@ -52,6 +54,8 @@ define(function(require, exports, module) {
     function setupTriggerCommitProject() {
         $(ProjectCommitter).on('projectCommitted', function(event, projectName) {
             Repository.setModified(false);
+            var lockedElements = ElementLocker.getLockedElements();
+            LockElement.unlockGivenElements(lockedElements);
             updateTitlebar(projectName);
         });
     }

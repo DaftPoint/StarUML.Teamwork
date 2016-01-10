@@ -32,7 +32,7 @@ define(function(require, exports, module) {
                     ModelExplorerView.update(element);
                     var elementId = element._id.replace(/[^a-z0-9]/gi, '_');
                     elementsToLock.push({elementID: element._id, escapedID: elementId});
-                    lockedElements[element._id] = element;
+                    lockedElements[element._id] = elementId;
                 }
             });
             Locking.lockGivenElements(elementsToLock);
@@ -74,7 +74,13 @@ define(function(require, exports, module) {
         return lockedElements;
     }
 
+    function addLockedElement(element) {
+        var elementId = element._id.replace(/[^a-z0-9]/gi, '_');
+        lockedElements[element._id] = elementId;
+    }
+
     exports.lockElement   = lockElement;
     exports.unlockElement = unlockElement;
-    exports.getLockedElement = getLockedElements;
+    exports.getLockedElements = getLockedElements;
+    exports.addLockedElement = addLockedElement;
 });

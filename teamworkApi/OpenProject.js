@@ -84,6 +84,9 @@ define(function (require, exports, module) {
         promise.done(function(projectName) {
             Dialogs.cancelModalDialogIfOpen('modal');
             Toast.info("Opening Project...");
+            var workingDirPath = TeamworkBase.loadLocalWorkingPath("Project");
+            var workingDir = FileSystem.getDirectoryForPath(workingDirPath);
+            workingDir.unlink();
             TeamworkView.addOpenProjectEvent(projectName, TeamworkConfiguration.getUsername());
             $(exports).triggerHandler('teamworkProjectLoaded', [projectName]);
         });

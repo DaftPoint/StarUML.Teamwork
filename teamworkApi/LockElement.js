@@ -20,6 +20,7 @@ define(function (require, exports, module) {
     var GitApi              = require("../StarGit/api-built");
     var ProgressDialog      = require("../dialogs/ProgressDialog");
     var TeamworkView        = require("../teamworkView/TeamworkView");
+    var ElementLocker       = require("../locking/ElementLocker");
 
     //Constants
 
@@ -51,15 +52,18 @@ define(function (require, exports, module) {
     function unlockGivenElements(elements) {
         var workingPath = GitConfiguration.getLocalWorkingDirectory();
         var projectName = TeamworkBase.getTeamworkProjectName();
-        elements.forEach(function (element, index, array) {
-            var branchName = element;
-            var elementWorkingPath = workingPath + "/locking/" + projectName + "/" + branchName;
-            var refContent = 'refs/heads/locks/' + projectName + '/' + branchName;
-            var valueToResolve = 'locks/' + projectName + '/' + branchName;
-            var prepareWorkingDirPromise = TeamworkBase.prepareWorkingDirectory(valueToResolve, elementWorkingPath, refContent);
-            var branchPromise = TeamworkBase.createAndCheckoutBranch(prepareWorkingDirPromise, projectName);
-            removeLockLocallyAndFromServer(branchPromise, element);
-        });
+        for(var key in elements) {
+            if(elements.hasOwnProperty(key)) {
+                var element = elements[key];
+                var branchName = element;
+                var elementWorkingPath = workingPath + "/locking/" + projectName + "/" + branchName;
+                var refContent = 'refs/heads/locks/' + projectName + '/' + branchName;
+                var valueToResolve = 'locks/' + projectName + '/' + branchName;
+                var prepareWorkingDirPromise = TeamworkBase.prepareWorkingDirectory(valueToResolve, elementWorkingPath, refContent);
+                var branchPromise = TeamworkBase.createAndCheckoutBranch(prepareWorkingDirPromise, projectName);
+                removeLockLocallyAndFromServer(branchPromise, element);
+            }
+        }
     }
 
     function createAndAddLockingInformation(promise, elementWorkingPath, unescapedElementId) {
@@ -141,6 +145,9 @@ define(function (require, exports, module) {
         var projectName = TeamworkBase.getTeamworkProjectName();
 
         TeamworkBase.getProjectsRootDir(localPath, function(workingDir) {
+            var directory = FileSystem.getDirectoryForPath(workingDir.fullPath);
+            directory.unlink();
+            directory.create();
             var options = {
                 dir: workingDir,
                 url: GitConfiguration.getRemoteURL(),
@@ -150,8 +157,6 @@ define(function (require, exports, module) {
             }
             GitApi.getProjectLockRefs(options, function(locks) {
                 executeUpdateLockInfo(locks, projectName);
-                //workingDir = FileSystem.getDirectoryForPath(workingDir.fullPath);
-                //workingDir.moveToTrash();
             });
         });
     }
@@ -189,6 +194,8 @@ define(function (require, exports, module) {
                 var lockedElement = Repository.get(lockInfoFile.elementID);
                 if(lockedElement) {
                     lockedElement.lockElement(lockInfoFile.lockedBy);
+                    ElementLocker.addLockedElement(lockedElement);
+                    ModelExplorerView.update(lockedElement);
                     TeamworkView.addUpdateLockInfoEvent(lockInfoFile.elementID, lockInfoFile.lockingDate, lockInfoFile.lockedBy);
                 } else {
                     var message = "There exists a lock on the Server for an Element that does not exist. Please contact the Server-Administrator to handle the problem. Element-ID: " + lockInfoFile.elementID;
