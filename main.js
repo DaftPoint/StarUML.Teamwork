@@ -14,8 +14,6 @@ define(function (require, exports, module) {
     var TeamworkCommandHandler 	= require("./commandHandler/CommandHandler");
     var LockingAttributesElement= require("./locking/LockingAttributesElement");
     var Trigger                 = require("./trigger/Trigger");
-    var Locking                 = require("./locking/ElementLocker");
-    var ProjectCommitter        = require("./teamworkApi/ProjectCommitter");
     var TeamworkView            = require("./teamworkView/TeamworkView");
 
     //# Define Commands
@@ -37,12 +35,12 @@ define(function (require, exports, module) {
     CommandManager.register("Create Teamwork-Project", 	    CMD_TEAMWORK_CREATE,  	TeamworkCommandHandler.createProject);
     CommandManager.register("Lock Teamwork-Project", 	    CMD_TEAMWORK_LOCK,  	TeamworkCommandHandler.lockWholeProject);
     CommandManager.register("Update Lock-Info", 	        CMD_UPDATE_LOCKS,  	    TeamworkCommandHandler.updateProjectLockInfo);
-    CommandManager.register("Commit changes",  			    CMD_TEAMWORK_COMMIT,   	ProjectCommitter.commitProjectChanges);
+    CommandManager.register("Commit changes",  			    CMD_TEAMWORK_COMMIT,   	TeamworkCommandHandler.commitChanges);
     CommandManager.register("Update Project",     		    CMD_TEAMWORK_UPDATE, 	TeamworkCommandHandler.updateProject);
     CommandManager.register("Configure Teamwork-Server",    CMD_TEAMWORK_CONFIGURE, TeamworkCommandHandler.handleConfigure);
 
-    CommandManager.register("Lock Element",                 CMD_LOCK_ELEMENT,       Locking.lockElement);
-    CommandManager.register("Unlock Element",               CMD_UNLOCK_ELEMENT,     Locking.unlockElement);
+    CommandManager.register("Lock Element",                 CMD_LOCK_ELEMENT,       TeamworkCommandHandler.lockElement);
+    CommandManager.register("Unlock Element",               CMD_UNLOCK_ELEMENT,     TeamworkCommandHandler.unlockElement);
 
     var menu;
     menu = MenuManager.addMenu(CMD_TEAMWORK);

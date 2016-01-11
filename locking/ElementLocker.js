@@ -46,6 +46,7 @@ define(function(require, exports, module) {
     function unlockElement() {
         var models = SelectionManager.getSelectedModels();
         var views = SelectionManager.getSelectedViews();
+        var username = PreferenceManager.get(USERNAME_PREFERENCE);
         var elements = models.concat(views);
         var elementsToUnlock = [];
         if (elements.length > 0) {
@@ -53,9 +54,8 @@ define(function(require, exports, module) {
                 var message;
                 if(!element.isLocked()) {
                     message = "Element '" + element._id + "' is not locked";
-                    TeamworkView.addTeamworkItem("Error", message, new Date().toJSON().slice(0, 19).replace("T", " "));
+                    TeamworkView.addTeamworkItem("Error", message, new Date().toJSON().slice(0, 19).replace("T", " "), username);
                 } else {
-                    var username = PreferenceManager.get(USERNAME_PREFERENCE);
                     if(element.lockedBy === username) {
                         element.unlockElement();
                         ModelExplorerView.update(element);
@@ -64,7 +64,7 @@ define(function(require, exports, module) {
                         delete lockedElements[element._id];
                     } else {
                         message = "Element '" + element._id + "' cannot be unlocked. You do not own the lock";
-                        TeamworkView.addTeamworkItem("Error", message, new Date().toJSON().slice(0, 19).replace("T", " "));
+                        TeamworkView.addTeamworkItem("Error", message, new Date().toJSON().slice(0, 19).replace("T", " "), username);
                     }
                 }
             });

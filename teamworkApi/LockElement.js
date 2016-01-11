@@ -30,6 +30,7 @@ define(function (require, exports, module) {
     //Functions
 
     function lockWholeProject() {
+        Toast.error("Not implemented yet");
         throw Error("Not implemented");
     }
 
