@@ -9,12 +9,16 @@ define(function (require, exports, module) {
     var DefaultMenus            = app.getModule("menu/DefaultMenus");
     var ContextMenuManager      = app.getModule("menu/ContextMenuManager");
     var ExtensionUtils          = app.getModule("utils/ExtensionUtils");
+    var Repository              = app.getModule("core/Repository");
 
     //Imported files
     var TeamworkCommandHandler 	= require("./commandHandler/CommandHandler");
     var LockingAttributesElement= require("./locking/LockingAttributesElement");
     var Trigger                 = require("./trigger/Trigger");
     var TeamworkView            = require("./teamworkView/TeamworkView");
+
+    //Overwrites
+    Repository.doOperation  = Trigger.doOperation;
 
     //# Define Commands
     var CMD_TEAMWORK         	= 'teamwork';

@@ -85,7 +85,7 @@ define(function(require, exports, module) {
     }
 
     function isFragmentView(parent) {
-        return parent.hasOwnProperty(VIEW_MODEL_PROPERTY);
+        return parent.hasOwnProperty(VIEW_MODEL_PROPERTY) || parent.hasOwnProperty("fillColor") || parent.hasOwnProperty("visible");
     }
 
     function addFragmentToProject(fragment, fragments) {

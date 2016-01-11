@@ -179,6 +179,21 @@ define(function (require, exports, module) {
         var iteratorMap;
         if(onlyChangedElements) {
             iteratorMap = changedIds;
+            for(var id in changedIds) {
+                if(changedIds.hasOwnProperty(id)) {
+                    var iterateRefs = function(id) {
+                        var refIds = Repository.getRefMap()[id];
+                        for(var refId in refIds) {
+                            var checkElement = Repository.get(id);
+                            if(refIds.hasOwnProperty(refId) && checkElement._parent && checkElement._parent._id != refId) {
+                                iteratorMap[refId] = refId;
+                                iterateRefs(refId);
+                            }
+                        }
+                    };
+                    iterateRefs(id);
+                }
+            }
         } else {
             iteratorMap = idMap;
         }

@@ -19,6 +19,9 @@ define(function(require, exports, module) {
     var LockElement             = require("./../teamworkApi/LockElement");
     var ElementLocker           = require("./../locking/ElementLocker");
 
+    //Overwrites
+    var RepositoryDoOperation= Repository.doOperation;
+
     function updateTitlebar(projectName) {
         var filename = projectName,
             title = "";
@@ -35,6 +38,24 @@ define(function(require, exports, module) {
         title += "Teamwork-Project";
 
         $("title").html(title);
+    }
+
+    function doOperation(operation) {
+        RepositoryDoOperation.call(this, operation);
+        if (operation.ops.length > 0 && TeamworkBase.isTeamworkProject()) {
+            try {
+                for(var i = 0; operation.ops.length; i++) {
+                    var op = operation.ops[i];
+                    if(op.op == OperationBuilder.OP_INSERT ||op.op == OperationBuilder.OP_FIELD_INSERT) {
+                        var element = op._elem;
+                        //$(exports).triggerHandler('elementCreated', [element]);
+                        triggerElementCreated([element]);
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
     }
 
     function setupTriggerOpenProject() {
@@ -99,18 +120,18 @@ define(function(require, exports, module) {
     }
 
     function checkLockWhenInserting(operation) {
-        if (operation.op === OperationBuilder.OP_REMOVE) {
+        if (operation.op === OperationBuilder.OP_INSERT/* || operation.op === OperationBuilder.OP_FIELD_INSERT*/) {
             var reader = new Core.Reader({ data: operation.arg }, _global.type);
-            var elementToDelete  = reader.readObj("data");
-            var parentOfDeletion = Repository.get(elementToDelete._parent.$ref);
-            if(isElementLockedByOtherOrOldAndNotLocked(parentOfDeletion)) {
-                showError(parentOfDeletion.isLocked());
+            var elementToCreate  = reader.readObj("data");
+            var parentOfCreation = Repository.get(elementToCreate._parent.$ref);
+            if(isElementLockedByOtherOrOldAndNotLocked(parentOfCreation)) {
+                showError(parentOfCreation.isLocked());
             }
         }
     }
 
     function checkLockWhenRemoving(operation) {
-        if (operation.op === OperationBuilder.OP_REMOVE) {
+        if (operation.op === OperationBuilder.OP_REMOVE/* || operation.op === OperationBuilder.OP_FIELD_REMOVE*/) {
             var reader = new Core.Reader({ data: operation.arg }, _global.type);
             var elementToDelete  = reader.readObj("data");
             var parentOfDeletion = Repository.get(elementToDelete._parent.$ref);
@@ -172,6 +193,20 @@ define(function(require, exports, module) {
                 element.newElement = true;
             });
         });
+
+        /*$(Repository).on('elementCreated', function(event, createdElements) {
+            createdElements.forEach(function(element) {
+                element = Repository.get(element._id);
+                element.newElement = true;
+            });
+        });*/
+    }
+
+    function triggerElementCreated(createdElements) {
+        createdElements.forEach(function(element) {
+            element = Repository.get(element._id);
+            element.newElement = true;
+        });
     }
 
     function setupTriggerOnRepository() {
@@ -188,4 +223,5 @@ define(function(require, exports, module) {
     exports.setupTriggerOnRepository = setupTriggerOnRepository;
     exports.setupTriggerCommitProject = setupTriggerCommitProject;
     exports.setupTriggerCreateProject = setupTriggerCreateProject;
+    exports.doOperation = doOperation;
 });
