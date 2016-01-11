@@ -6,6 +6,7 @@ define(function(require, exports, module) {
     var Toast 				= app.getModule("ui/Toast");
     var FileSystem          = app.getModule("filesystem/FileSystem");
     var Repository      	= app.getModule("core/Repository");
+    var DiagramManager      = app.getModule("diagrams/DiagramManager");
 
     //Imports
     var TeamworkBase        = require("./TeamworkBase");
@@ -18,6 +19,7 @@ define(function(require, exports, module) {
     //Constants
     //Functions
     function updateProject() {
+        DiagramManager.saveWorkingDiagrams();
         var projectName = TeamworkBase.getTeamworkProjectName();
         var workingDirPromise = getProjectWorkDir("Update_" + projectName);
         var currentProjectPromise = loadCurrentProjectFromServer(workingDirPromise, projectName);
@@ -30,7 +32,7 @@ define(function(require, exports, module) {
         var nextPromise = new $.Deferred();
         promise.done(function(workingDir, projectName) {
             try {
-                var splitPromise = TeamworkBase.splitProjectInSingleFiles(false, projectName, true, true, false);
+                var splitPromise = TeamworkBase.splitProjectInSingleFiles(false, "Update_" + projectName, true, true, false);
             } catch(error) {
                 nextPromise.reject();
             }
@@ -85,6 +87,7 @@ define(function(require, exports, module) {
             TeamworkView.addProjectUpdateEvent(projectName, GitConfiguration.getUsername());
             Dialogs.cancelModalDialogIfOpen('modal');
             $(exports).triggerHandler('projectUpdated', [projectName]);
+            DiagramManager.restoreWorkingDiagrams();
         });
     }
 

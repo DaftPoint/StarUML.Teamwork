@@ -152,7 +152,8 @@ define(function (require, exports, module) {
         return localPath + "/" + projectName + "/";
     }
 
-    function splitProjectInSingleFiles(recreateExistingDirectory, projectName, onlyChangedElements, overwriteAllowed, throwError) {
+    function splitProjectInSingleFiles(recreateExistingDirectory, projectDirName, onlyChangedElements, overwriteAllowed, throwError) {
+        resetChangesDone();
         var nextPromise = new $.Deferred();
         var idMap = Repository.getIdMap();
         var changedIds;
@@ -169,7 +170,7 @@ define(function (require, exports, module) {
                 }
             }
         }
-        var fragmentDirectory = getProjectPath(projectName);
+        var fragmentDirectory = getProjectPath(projectDirName);
         var directory = FileSystem.getDirectoryForPath(fragmentDirectory);
         if(recreateExistingDirectory) {
             directory.unlink();
@@ -181,57 +182,76 @@ define(function (require, exports, module) {
         } else {
             iteratorMap = idMap;
         }
-        var counterChangesDone = 0;
         var counterRuns = 0;
         var masterPromise = new $.Deferred();
         for(var key in iteratorMap) {
-
-            var filePathForElement = buildFilePathForElement(fragmentDirectory, key);
-            var file = FileSystem.getFileForPath(filePathForElement);
-
-            file.exists(function(exists) {
-                if(!exists || overwriteAllowed) {
-                    var element = idMap[key];
-                    var tempOwnedElements = element.ownedElements;
-                    var tempOwnedViews = element.ownedViews;
-                    var tempSubViews = element.subViews;
-                    if(tempOwnedElements != null && tempOwnedElements !== undefined) {
-                        element.ownedElements = null;
-                    }
-                    if(tempOwnedViews != null && tempOwnedViews !== undefined) {
-                        element.ownedViews = null;
-                    }
-                    if(tempSubViews != null && tempSubViews !== undefined) {
-                        element.subViews = null;
-                    }
-
-                    ProjectManager.exportToFile(element, filePathForElement);
-                    counterChangesDone++;
-
-                    if(tempOwnedElements != null && tempOwnedElements !== undefined) {
-                        element.ownedElements = tempOwnedElements;
-                    }
-                    if(tempOwnedViews != null && tempOwnedViews !== undefined) {
-                        element.ownedViews = tempOwnedViews;
-                    }
-                    if(tempSubViews != null && tempSubViews !== undefined) {
-                        element.subViews = tempSubViews;
-                    }
-                }
-                counterRuns++;
-                if(counterRuns == Object.keys(iteratorMap).length) {
-                    masterPromise.resolve();
-                }
-            })
+            if(iteratorMap.hasOwnProperty(key)) {
+                var filePathForElement = buildFilePathForElement(fragmentDirectory, key);
+                var file = FileSystem.getFileForPath(filePathForElement);
+                createFile(file, filePathForElement, idMap[key], iteratorMap, overwriteAllowed, function() {
+                    counterRuns++;
+                    return counterRuns;
+                }, masterPromise);
+            }
         }
         masterPromise.done(function() {
-            if(counterChangesDone == 0) {
+            if(getChangesDone() == 0) {
                 nextPromise.resolve("NO_CHANGES");
             } else {
                 nextPromise.resolve();
             }
         });
         return nextPromise;
+    }
+
+    var changesDone = 0;
+
+    function getChangesDone() {
+        return changesDone;
+    }
+    function resetChangesDone() {
+        changesDone = 0;
+    }
+    function countChangePlusOne() {
+        changesDone++;
+    }
+
+    function createFile(file, path, element, iteratorMap, overwriteAllowed, counterCallback, masterPromise) {
+        file.exists(function(exists) {
+            if(!exists || overwriteAllowed) {
+                var tempOwnedElements = element.ownedElements;
+                var tempOwnedViews = element.ownedViews;
+                var tempSubViews = element.subViews;
+                if(tempOwnedElements != null && tempOwnedElements !== undefined) {
+                    element.ownedElements = null;
+                }
+                if(tempOwnedViews != null && tempOwnedViews !== undefined) {
+                    element.ownedViews = null;
+                }
+                if(tempSubViews != null && tempSubViews !== undefined) {
+                    element.subViews = null;
+                }
+
+                ProjectManager.exportToFile(element, path);
+                console.log(path);
+                console.log(element);
+                countChangePlusOne();
+
+                if(tempOwnedElements != null && tempOwnedElements !== undefined) {
+                    element.ownedElements = tempOwnedElements;
+                }
+                if(tempOwnedViews != null && tempOwnedViews !== undefined) {
+                    element.ownedViews = tempOwnedViews;
+                }
+                if(tempSubViews != null && tempSubViews !== undefined) {
+                    element.subViews = tempSubViews;
+                }
+            }
+            var counterRuns = counterCallback();
+            if(counterRuns == Object.keys(iteratorMap).length) {
+                masterPromise.resolve();
+            }
+        });
     }
 
     function buildFilePathForElement(fragmentDirectory, id) {
