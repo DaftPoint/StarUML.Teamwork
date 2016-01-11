@@ -20,9 +20,11 @@ define(function(require, exports, module) {
 
     function lockElement() {
         var models = SelectionManager.getSelectedModels();
+        var views = SelectionManager.getSelectedViews();
+        var elements = models.concat(views);
         var elementsToLock = [];
-        if (models.length > 0) {
-            models.forEach(function(element, index, array) {
+        if (elements.length > 0) {
+            elements.forEach(function(element, index, array) {
                 if(element.isLocked()) {
                     var message = "Element '" + element._id + "' already locked";
                     TeamworkView.addTeamworkItem("Error", message, new Date().toJSON().slice(0, 19).replace("T", " "));
@@ -43,9 +45,11 @@ define(function(require, exports, module) {
 
     function unlockElement() {
         var models = SelectionManager.getSelectedModels();
+        var views = SelectionManager.getSelectedViews();
+        var elements = models.concat(views);
         var elementsToUnlock = [];
-        if (models.length > 0) {
-            models.forEach(function(element, index, array) {
+        if (elements.length > 0) {
+            elements.forEach(function(element, index, array) {
                 var message;
                 if(!element.isLocked()) {
                     message = "Element '" + element._id + "' is not locked";

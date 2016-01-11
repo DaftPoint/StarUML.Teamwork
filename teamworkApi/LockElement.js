@@ -13,6 +13,7 @@ define(function (require, exports, module) {
     var Async  	            = app.getModule("utils/Async");
     var Dialogs             = app.getModule('dialogs/Dialogs');
     var FileSystem          = app.getModule("filesystem/FileSystem");
+    var ModelExplorerView   = app.getModule("explorer/ModelExplorerView");
 
     //Imports
     var TeamworkBase        = require("./TeamworkBase");
