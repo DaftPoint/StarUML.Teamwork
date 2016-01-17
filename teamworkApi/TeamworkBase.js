@@ -35,6 +35,7 @@ define(function (require, exports, module) {
     //Variables
     var _teamworkProjectName = null;
     var _isTeamworkProject = false;
+    var _ignoreLocks       = false;
     var _changedElementIDs   = {};
 
     //Functions
@@ -387,6 +388,14 @@ define(function (require, exports, module) {
         _isTeamworkProject = isTeamworkProject;
     }
 
+    function isIgnoreLocks() {
+        return _ignoreLocks;
+    }
+
+    function setIgnoreLocks(ignoreLocks) {
+        _ignoreLocks = ignoreLocks;
+    }
+
     //Backend
     exports.getTeamworkProjectName = getTeamworkProjectName;
     exports.setTeamworkProjectName = setTeamworkProjectName;
@@ -409,4 +418,6 @@ define(function (require, exports, module) {
     exports.isTeamworkProject = isTeamworkProject;
     exports.setTeamworkProject = setTeamworkProject;
     exports.loadProjectFromFragments = loadProjectFromFragments;
+    exports.isIgnoreLocks = isIgnoreLocks;
+    exports.setIgnoreLocks = setIgnoreLocks;
 });

@@ -8,6 +8,8 @@ define(function(require, exports, module) {
     var OperationBuilder        = app.getModule("core/OperationBuilder");
     var Toast 				    = app.getModule("ui/Toast");
     var Core                    = app.getModule("core/Core");
+    var SelectionManager        = app.getModule("engine/SelectionManager");
+    var DiagramManager          = app.getModule("diagrams/DiagramManager");
 
     //imported modules
     var OpenProject             = require("./../teamworkApi/OpenProject");
@@ -44,12 +46,14 @@ define(function(require, exports, module) {
         RepositoryDoOperation.call(this, operation);
         if (operation.ops.length > 0 && TeamworkBase.isTeamworkProject()) {
             try {
-                for(var i = 0; operation.ops.length; i++) {
+                for(var i = 0; i < operation.ops.length; i++) {
                     var op = operation.ops[i];
                     if(op.op == OperationBuilder.OP_INSERT ||op.op == OperationBuilder.OP_FIELD_INSERT) {
                         var element = op._elem;
                         //$(exports).triggerHandler('elementCreated', [element]);
-                        triggerElementCreated([element]);
+                        if(element !== undefined) {
+                            triggerElementCreated([element]);
+                        }
                     }
                 }
             } catch (err) {
@@ -69,6 +73,18 @@ define(function(require, exports, module) {
             } catch (err) {
                 console.error(err);
             }
+        });
+    }
+
+    function setupTriggerOnDiagramChanges() {
+        $(SelectionManager).on('selectionChanged', function(event, _selectedModels, _selectedViews) {
+            TeamworkBase.setIgnoreLocks(true);
+        });
+        $(DiagramManager).on('workingDiagramAdd', function(event, _selectedModels, _selectedViews) {
+            TeamworkBase.setIgnoreLocks(true);
+        });
+        $(DiagramManager).on('currentDiagramChanged', function(event, _selectedModels, _selectedViews) {
+            TeamworkBase.setIgnoreLocks(true);
         });
     }
 
@@ -159,7 +175,8 @@ define(function(require, exports, module) {
     function triggerBeforeExecuteOperation() {
         var MOVE_VIEWS = "move views";
         $(Repository).on('beforeExecuteOperation', function (event, operation) {
-            if(!TeamworkBase.isTeamworkProject()) {
+            if(!TeamworkBase.isTeamworkProject() || TeamworkBase.isIgnoreLocks() || operation.name == 'bypassFieldAssign') {
+                TeamworkBase.setIgnoreLocks(false);
                 return;
             }
             var operationName = operation.name;
@@ -224,4 +241,5 @@ define(function(require, exports, module) {
     exports.setupTriggerCommitProject = setupTriggerCommitProject;
     exports.setupTriggerCreateProject = setupTriggerCreateProject;
     exports.doOperation = doOperation;
+    exports.setupTriggerOnDiagramChanges = setupTriggerOnDiagramChanges;
 });

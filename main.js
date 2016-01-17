@@ -81,5 +81,6 @@ define(function (require, exports, module) {
         Trigger.setupTriggerOnRepository();
         Trigger.setupTriggerCommitProject();
         Trigger.setupTriggerCreateProject();
+        //Trigger.setupTriggerOnDiagramChanges();
     });
 });
