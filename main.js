@@ -89,6 +89,7 @@ define(function (require, exports, module) {
 
     AppInit.htmlReady(function () {
         ExtensionUtils.loadStyleSheet(module, "styles/dialog.css");
+        ExtensionUtils.loadStyleSheet(module, "styles/preferences.css");
         ExtensionUtils.loadStyleSheet(module, "styles/bootstrap/css/bootstrap.css");
         LockingAttributesElement.addLockingAttributeToElementType();
         LockingAttributesElement.addLockingAttributesToUMLModelElementType();
