@@ -113,6 +113,7 @@ define(function (require, exports, module) {
         var promise = $.Deferred();
         var directory = FileSystem.getDirectoryForPath(workingPath);
         directory.unlink();
+        //directory.create();
         getProjectsRootDir(workingPath, function (workingDir) {
             workingDir.getDirectory('.git', {create:true}, function(gitDir){
                     gitDir.getDirectory('objects', {create: true}, function(objectsDir){

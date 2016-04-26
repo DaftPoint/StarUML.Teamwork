@@ -55,6 +55,14 @@ define(function (require, exports, module) {
             var elementWorkingPath = workingPath + "/locking/" + projectName + "/" + elementID;
             var refContent = 'refs/heads/locks/' + projectName + '/' + elementID;
             var valueToResolve = 'locks/' + projectName + '/' + elementID;
+
+            var directory = FileSystem.getDirectoryForPath(workingPath + "/locking/");
+            directory.unlink();
+            directory.create();
+            directory = FileSystem.getDirectoryForPath(workingPath + "/locking/" + projectName);
+            directory.unlink();
+            directory.create();
+
             var prepareWorkingDirPromise = TeamworkBase.prepareWorkingDirectory(valueToResolve, elementWorkingPath, refContent);
             var branchPromise = TeamworkBase.createAndCheckoutBranch(prepareWorkingDirPromise, projectName);
             var lockInfoPromise = createAndAddLockingInformation(branchPromise, elementWorkingPath, unescapedElementId);
@@ -186,6 +194,14 @@ define(function (require, exports, module) {
         var promise = new $.Deferred();
         var localPath = GitConfiguration.getLocalWorkingDirectory();
         var locksPath = localPath + "/locking/" + projectName + "/" + lockName;
+
+        var directory = FileSystem.getDirectoryForPath(localPath + "/locking/");
+        directory.unlink();
+        directory.create();
+        directory = FileSystem.getDirectoryForPath(localPath + "/locking/" + projectName);
+        directory.unlink();
+        directory.create();
+
         TeamworkBase.getProjectsRootDir(locksPath, function(workingDir) {
             var branchName = 'locks/' + projectName + '/' + lockName;
             var progressCallback = ProgressDialog.showProgress("Loading Teamwork-Project-Locks...", "Connecting to server...");

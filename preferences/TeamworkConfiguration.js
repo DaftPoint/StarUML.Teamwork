@@ -24,7 +24,7 @@ define(function (require, exports, module) {
     var USERNAME_PREFERENCE = "teamwork.server.username";
     var PASSWORD_PREFERENCE = "teamwork.server.password";
     var REMOTE_PREFERENCE   = "teamwork.server.remote";
-    var PROTOCOL_PREFERENCE = "teamwork.server.protocol";
+    //var PROTOCOL_PREFERENCE = "teamwork.server.protocol";
     var LOCAL_WORK_DIR_PREFERENCE = "teamwork.server.local";
     var BACKEND_PREFERENCE = "teamwork.server.backend";
 
@@ -40,9 +40,13 @@ define(function (require, exports, module) {
     }
 
     function buildRemoteURL() {
-        var remoteHost 		= getRemoteHost();
-        var remoteProtocol 	= getRemoteProtocol();
-        return remoteProtocol + remoteHost;
+        var remoteHost 		= getRemoteHost() + "";
+        //var remoteProtocol 	= getRemoteProtocol();
+        if(remoteHost.indexOf("http") != 0) {
+            remoteHost = "http://" + remoteHost;
+            PreferenceManager.set(REMOTE_PREFERENCE, remoteHost);
+        }
+        return remoteHost;
     }
 
     function getUsername() {
@@ -57,9 +61,9 @@ define(function (require, exports, module) {
         return PreferenceManager.get(REMOTE_PREFERENCE);
     }
 
-    function getRemoteProtocol() {
+    /*function getRemoteProtocol() {
         return PreferenceManager.get(PROTOCOL_PREFERENCE);
-    }
+    }*/
 
     //Backend
     exports.getRemoteURL = buildRemoteURL;

@@ -18,6 +18,7 @@ define(function (require, exports, module) {
     "use strict";
 
     //Modules
+    var GitConfiguration        = require("./../preferences/TeamworkConfiguration");
 
     //Constants
 
@@ -42,6 +43,28 @@ define(function (require, exports, module) {
         type.Element.prototype.isLocked = isLocked;
         type.Element.prototype.newElement = false;
         type.Element.prototype.isNewElement = isNewElement;
+        type.Element.prototype.movableWhenAllowed = 0;
+        type.Element.prototype.sizableWhenAllowed = 0;
+        type.Element.prototype.loadWithLockingAttributes = type.Element.prototype.load;
+        type.Element.prototype.load = loadWithLockingAttributes;
+
+        /*function Element() {
+            type.Element.apply(this, arguments);
+            this.movableWhenAllowed = this.movable;
+            this.sizableWhenAllowed = this.sizable;
+        }
+        Element.prototype = Object.create(type.Element.prototype);
+        Element.prototype.constructor = Element;
+        type.Element = Element;*/
+    }
+
+    function loadWithLockingAttributes(reader) {
+        var loadResult = type.Element.prototype.loadWithLockingAttributes.call(this, reader);
+        this.movableWhenAllowed = this.movable;
+        this.sizableWhenAllowed = this.sizable;
+        this.movable = 0;
+        this.sizable = 0;
+        return loadResult;
     }
 
     function isNewElement() {
@@ -63,6 +86,8 @@ define(function (require, exports, module) {
     function unlockElement() {
         this.lockedBy = null;
         this.locked = false;
+        this.movable = 0;
+        this.sizable = 0;
     }
 
     function setLockUser(username) {
@@ -74,8 +99,13 @@ define(function (require, exports, module) {
     }
 
     function lockElement(username) {
+        var teamworkUser = GitConfiguration.getUsername();
         this.locked = true;
         this.setLockUser(username);
+        if(teamworkUser == username) {
+            this.movable = this.movableWhenAllowed;
+            this.sizable = this.sizableWhenAllowed;
+        }
     }
 
     //Backbone

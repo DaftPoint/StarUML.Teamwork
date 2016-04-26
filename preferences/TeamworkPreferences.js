@@ -22,7 +22,7 @@ define(function (require, exports, module) {
     var preferenceId 	  = "teamwork";
 
     var teamworkPreferences = {
-	    "teamwork.server.protocol": {
+	    /*"teamwork.server.protocol": {
 	        text: "HTTP-Protocol",
 	        description: "HTTP-Protocol to use for the connection to the GIT-Repository",
 	        type: "Dropdown",
@@ -31,7 +31,7 @@ define(function (require, exports, module) {
 	        	{value: "https://", text: "HTTPS"}
 	        ],
 	        'default': "http://"
-	    },
+	    },*/
 	    "teamwork.server.local": {
 	        text: "Local Working-Directory",
 	        description: "Local Path where the Remote-Data will be cached",
