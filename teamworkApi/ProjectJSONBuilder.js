@@ -28,6 +28,7 @@ define(function(require, exports, module) {
 
     //Functions
     function buildProjectFromFragments(fragments) {
+        type.Element.prototype.newElement = false;
         var _project;
         for (var item in fragments) {
             var fragment = fragments[item];

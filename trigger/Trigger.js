@@ -86,6 +86,7 @@ define(function(require, exports, module) {
                 TeamworkBase.setTeamworkProject(true);
                 Repository.setModified(false);
                 updateTitlebar(projectName);
+                type.Element.prototype.newElement = true;
             } catch (err) {
                 console.error(err);
             }

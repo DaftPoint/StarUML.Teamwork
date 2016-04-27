@@ -199,6 +199,7 @@ define(function (require, exports, module) {
                         var refIds = Repository.getRefMap()[id];
                         for(var refId in refIds) {
                             var checkElement = Repository.get(id);
+                            checkElement.markCommitedElement();
                             if(refIds.hasOwnProperty(refId) && checkElement._parent && checkElement._parent._id != refId) {
                                 iteratorMap[refId] = refId;
                                 iterateRefs(refId);

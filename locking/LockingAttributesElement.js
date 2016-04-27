@@ -47,6 +47,8 @@ define(function (require, exports, module) {
         type.Element.prototype.sizableWhenAllowed = 0;
         type.Element.prototype.loadWithLockingAttributes = type.Element.prototype.load;
         type.Element.prototype.load = loadWithLockingAttributes;
+        type.Element.prototype.isLockedByActualUser = isLockedByActualUser;
+        type.Element.prototype.markCommitedElement = markCommitedElement;
 
         /*function Element() {
             type.Element.apply(this, arguments);
@@ -62,8 +64,11 @@ define(function (require, exports, module) {
         var loadResult = type.Element.prototype.loadWithLockingAttributes.call(this, reader);
         this.movableWhenAllowed = this.movable;
         this.sizableWhenAllowed = this.sizable;
-        this.movable = 0;
-        this.sizable = 0;
+        if(!this.isNewElement() && !this.isLockedByActualUser()) {
+            this.newElement = false;
+            this.movable = 0;
+            this.sizable = 0;
+        }
         return loadResult;
     }
 
@@ -90,6 +95,14 @@ define(function (require, exports, module) {
         this.sizable = 0;
     }
 
+    function markCommitedElement() {
+        this.movableWhenAllowed = this.movable;
+        this.sizableWhenAllowed = this.sizable;
+        this.movable = 0;
+        this.sizable = 0;
+        this.newElement = false;
+    }
+
     function setLockUser(username) {
         this.lockedBy = username;
     }
@@ -106,6 +119,11 @@ define(function (require, exports, module) {
             this.movable = this.movableWhenAllowed;
             this.sizable = this.sizableWhenAllowed;
         }
+    }
+
+    function isLockedByActualUser() {
+        var teamworkUser = GitConfiguration.getUsername();
+        return this.isLocked() && teamworkUser == this.lockedBy;
     }
 
     //Backbone
