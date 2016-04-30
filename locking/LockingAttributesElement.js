@@ -19,6 +19,7 @@ define(function (require, exports, module) {
 
     //Modules
     var GitConfiguration        = require("./../preferences/TeamworkConfiguration");
+    var TeamworkBase            = require("./../teamworkApi/TeamworkBase");
 
     //Constants
 
@@ -64,7 +65,7 @@ define(function (require, exports, module) {
         var loadResult = type.Element.prototype.loadWithLockingAttributes.call(this, reader);
         this.movableWhenAllowed = this.movable;
         this.sizableWhenAllowed = this.sizable;
-        if(!this.isNewElement() && !this.isLockedByActualUser()) {
+        if(!this.isNewElement() && !this.isLockedByActualUser() && TeamworkBase.isTeamworkProject()) {
             this.newElement = false;
             this.movable = 0;
             this.sizable = 0;

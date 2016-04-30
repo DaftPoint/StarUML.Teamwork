@@ -4,7 +4,7 @@
     "description": "Extension to provide git functionality and enable collaborative work.",
     "homepage": "https://github.com/DaftPoint/StarUML.Teamwork",
     "issues": "https://github.com/DaftPoint/StarUML.Teamwork/issues",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "keywords": ["Teamwork-Server", "GIT"],
     "author": {
         "name": "Michael Seiler",
@@ -13,6 +13,6 @@
     },
     "license": "MIT",
     "engines": {
-        "staruml": ">=2.0.0"
+        "staruml": ">=2.5.0"
     }
 }
