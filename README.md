@@ -1,3 +1,5 @@
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
 # StarUML Teamwork-Server
 
 Version 0.1.2 - There may be bugs. Please report an issue so they can be fixed.
